@@ -216,18 +216,26 @@
             updateTimeInput();
             updateRealtimeWeather();
 
-            // [핵심] 알리바바 DB에서 데이터 긁어오기
             try {
+                console.log("데이터 요청 중... URL:", ALIBABA_URL);
                 const response = await fetch(ALIBABA_URL);
                 const dbData = await response.json();
                 
+                // [확인용] 실제로 DB에서 넘어온 생데이터를 콘솔에 찍어봅니다.
+                console.log("DB에서 받은 생데이터:", dbData);
+
+                if (dbData.length === 0) {
+                    console.warn("DB에 저장된 데이터가 없습니다!");
+                }
+
                 dbData.forEach(item => {
-                    const dateStr = new Date(item.timestamp).toISOString().split('T')[0];
-                    const timeStr = new Date(item.timestamp).toTimeString().slice(0, 5);
+                    // 서버에서 준 timestamp를 한국 시간 날짜로 변환
+                    const date = new Date(item.timestamp);
+                    const dateStr = date.toLocaleDateString('en-CA'); // YYYY-MM-DD 형식
+                    const timeStr = date.toTimeString().slice(0, 5);
                     
                     if (!allData[dateStr]) allData[dateStr] = { logs: [], mood: 7, sleep: 7 };
                     
-                    // 중복 기록 방지
                     if (!allData[dateStr].logs.find(l => l.id === item.timestamp)) {
                         allData[dateStr].logs.push({
                             id: item.timestamp,
@@ -240,16 +248,13 @@
                     }
                 });
 
-                console.log("Cloud DB 데이터 동기화 완료!");
+                console.log("최종 변환된 데이터(allData):", allData);
                 renderHistory();
                 renderChart();
                 updateProgressBars();
             } catch (e) {
-                console.error("데이터 로딩 실패 (오프라인 모드):", e);
-                // 서버 에러 시 기존 로컬 데이터라도 보여줌
-                loadDailyData();
-                renderHistory();
-                renderChart();
+                console.error("데이터 로딩 실패:", e);
+                loadDailyData(); renderHistory(); renderChart();
             }
         };
 
