@@ -211,73 +211,52 @@
     </div>
 
     <script>
-
-        function onTelegramAuth(user) {
-    console.log("로그인 성공!", user);
-    
-    // 1. 사용자 ID를 브라우저에 저장 (다음에 와도 기억하도록)
-    localStorage.setItem('telegram_user_id', user.id);
-    localStorage.setItem('telegram_user_name', user.first_name);
-
-    alert(`${user.first_name}님, 환영합니다! 데이터를 동기화합니다.`);
-    
-    // 2. 페이지 새로고침하여 본인의 데이터 불러오기
-    location.reload();
-}
-
-// 수정된 window.onload (ID가 있을 때만 서버에 요청)
-window.onload = async function() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('targetDate').value = today;
-    updateTimeInput();
-    updateRealtimeWeather();
-
-    const savedId = localStorage.getItem('telegram_user_id');
-    
-    if (savedId) {
-        try {
-            // 알리바바 서버에 본인의 ID를 파라미터로 보냄
-            const response = await fetch(`${ALIBABA_URL}?user_id=${savedId}`);
-            const dbData = await response.json();
-            
-            // ... 데이터 처리 로직 (기존과 동일) ...
-            console.log("동기화 완료!");
-            renderHistory(); renderChart(); updateProgressBars();
-        } catch (e) { console.error(e); }
-    } else {
-        console.log("로그인이 필요합니다.");
-    }
-};
-        
+        // [설정] 알리바바 서버 주소 및 봇 정보
+        const ALIBABA_URL = "https://wellnesot-brain-unwrkhiccv.ap-northeast-2.fcapp.run"; 
         let allData = JSON.parse(localStorage.getItem('wellnessData')) || {};
         let chartInstance = null;
 
-        // 1. 알리바바 서버 주소 정의 (스크립트 상단에 추가)
-        const ALIBABA_URL = "https://wellnesot-brain-unwrkhiccv.ap-northeast-2.fcapp.run"; 
+        // 1. 텔레그램 로그인 성공 시 호출되는 함수
+        function onTelegramAuth(user) {
+            console.log("로그인 성공!", user);
+            localStorage.setItem('telegram_user_id', user.id);
+            localStorage.setItem('telegram_user_name', user.first_name);
+            alert(`${user.first_name}님, 환영합니다!`);
+            location.reload(); // 페이지를 새로고침하여 데이터를 불러옵니다.
+        }
 
-        // 2. 하이라이트 하신 window.onload 교체 부분
+        // 2. 통합된 window.onload (페이지가 열릴 때 딱 한 번 실행됨)
         window.onload = async function() {
+            // 기본 세팅
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('targetDate').value = today;
             updateTimeInput();
             updateRealtimeWeather();
 
+            // 로그인 정보 확인
+            const savedId = localStorage.getItem('telegram_user_id');
+            const userName = localStorage.getItem('telegram_user_name');
+
+            if (savedId) {
+                // 로그인 완료 시: 로그인 버튼 숨기기 (선택 사항)
+                console.log(`${userName}(${savedId}) 사용자로 데이터 동기화 시작`);
+                await loadCloudData(savedId);
+            } else {
+                console.log("로그인이 필요합니다. 텔레그램 버튼을 눌러주세요.");
+            }
+        };
+
+        // 3. 클라우드에서 데이터를 가져오는 핵심 함수
+        async function loadCloudData(userId) {
             try {
-                console.log("데이터 요청 중... URL:", ALIBABA_URL);
-                const response = await fetch(ALIBABA_URL);
+                const response = await fetch(`${ALIBABA_URL}?user_id=${userId}`);
                 const dbData = await response.json();
                 
-                // [확인용] 실제로 DB에서 넘어온 생데이터를 콘솔에 찍어봅니다.
-                console.log("DB에서 받은 생데이터:", dbData);
-
-                if (dbData.length === 0) {
-                    console.warn("DB에 저장된 데이터가 없습니다!");
-                }
+                console.log("DB에서 받은 데이터:", dbData);
 
                 dbData.forEach(item => {
-                    // 서버에서 준 timestamp를 한국 시간 날짜로 변환
                     const date = new Date(item.timestamp);
-                    const dateStr = date.toLocaleDateString('en-CA'); // YYYY-MM-DD 형식
+                    const dateStr = date.toLocaleDateString('en-CA'); 
                     const timeStr = date.toTimeString().slice(0, 5);
                     
                     if (!allData[dateStr]) allData[dateStr] = { logs: [], mood: 7, sleep: 7 };
@@ -289,7 +268,7 @@ window.onload = async function() {
                             amount: item.caffeine,
                             sugar: item.sugar,
                             name: item.text,
-                            mood: 7 
+                            mood: 7
                         });
                     }
                 });
