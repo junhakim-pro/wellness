@@ -211,6 +211,44 @@
     </div>
 
     <script>
+
+        function onTelegramAuth(user) {
+    console.log("로그인 성공!", user);
+    
+    // 1. 사용자 ID를 브라우저에 저장 (다음에 와도 기억하도록)
+    localStorage.setItem('telegram_user_id', user.id);
+    localStorage.setItem('telegram_user_name', user.first_name);
+
+    alert(`${user.first_name}님, 환영합니다! 데이터를 동기화합니다.`);
+    
+    // 2. 페이지 새로고침하여 본인의 데이터 불러오기
+    location.reload();
+}
+
+// 수정된 window.onload (ID가 있을 때만 서버에 요청)
+window.onload = async function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('targetDate').value = today;
+    updateTimeInput();
+    updateRealtimeWeather();
+
+    const savedId = localStorage.getItem('telegram_user_id');
+    
+    if (savedId) {
+        try {
+            // 알리바바 서버에 본인의 ID를 파라미터로 보냄
+            const response = await fetch(`${ALIBABA_URL}?user_id=${savedId}`);
+            const dbData = await response.json();
+            
+            // ... 데이터 처리 로직 (기존과 동일) ...
+            console.log("동기화 완료!");
+            renderHistory(); renderChart(); updateProgressBars();
+        } catch (e) { console.error(e); }
+    } else {
+        console.log("로그인이 필요합니다.");
+    }
+};
+        
         let allData = JSON.parse(localStorage.getItem('wellnessData')) || {};
         let chartInstance = null;
 
