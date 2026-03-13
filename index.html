@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wellness Log Pro+ v2.2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f8fafc; }
+        .btn-active:active { transform: scale(0.96); }
+        .tab-active { background-color: #059669 !important; color: white !important; }
+        .selected-item { border-color: #059669 !important; background-color: #ecfdf5 !important; color: #059669 !important; border-width: 2px !important; }
+        .progress-bar { transition: width 0.6s ease; }
+        .warning-pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body class="text-slate-900 pb-10">
+    <div class="max-w-md mx-auto min-h-screen bg-white shadow-2xl relative flex flex-col">
+        
+        <header class="bg-slate-900 p-4 text-white flex justify-between items-center sticky top-0 z-50">
+            <div>
+                <h1 class="text-lg font-bold flex items-center gap-2">☕ 웰니스 로그 <span class="bg-emerald-500 text-[9px] px-1.5 py-0.5 rounded tracking-tighter text-white">V2.2</span></h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Mind & Body Tracker</p>
+            </div>
+            <div class="flex gap-2">
+                <input type="date" id="targetDate" class="bg-slate-800 border-none rounded-lg px-2 py-1 text-xs font-bold" onchange="loadDailyData()">
+                <button onclick="toggleModal()" class="w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full text-sm">ℹ️</button>
+            </div>
+        </header>
+
+        <nav class="flex p-2 gap-2 bg-slate-50 border-b sticky top-[64px] z-40">
+            <button onclick="switchTab('morning')" id="tabMorning" class="flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active">🌅 리포트/목표</button>
+            <button onclick="switchTab('caffeine')" id="tabCaffeine" class="flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active">📊 기록/분석</button>
+        </nav>
+
+        <main class="p-4 space-y-6 flex-1">
+            
+            <div id="morningSection" class="space-y-5">
+                <div class="bg-slate-100 border border-slate-200 rounded-2xl p-4 shadow-inner">
+                    <h3 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Yesterday Performance</h3>
+                    <div id="yesterdaySummary" class="grid grid-cols-2 gap-3 text-xs text-slate-700 font-bold italic"></div>
+                </div>
+
+                <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                    <h3 class="text-xs font-bold text-emerald-800 mb-3 flex items-center gap-1">🎯 오늘의 다짐 (목표 설정)</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Caffeine Target</label>
+                            <select id="caffeineGoal" class="w-full bg-white border border-emerald-200 rounded-xl p-2.5 text-xs font-bold shadow-sm focus:outline-none">
+                                <option value="0">커피 안 마시기 (0mg)</option>
+                                <option value="150" selected>커피 1잔 (150mg)</option>
+                                <option value="300">커피 2잔 (300mg)</option>
+                                <option value="450">최대 한도 (450mg)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Sugar Target</label>
+                            <select id="sugarGoal" class="w-full bg-white border border-emerald-200 rounded-xl p-2.5 text-xs font-bold shadow-sm focus:outline-none">
+                                <option value="0">무설탕 (0g)</option>
+                                <option value="15">가볍게 (15g)</option>
+                                <option value="30" selected>보통 (30g)</option>
+                                <option value="50">고당분 허용 (50g)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Sleep Time</label>
+                        <select id="sleep" class="w-full bg-transparent text-lg font-black text-emerald-600 focus:outline-none border-none">
+                            <option value="6">6.0h</option><option value="7" selected>7.0h</option>
+                            <option value="7.5">7.5h</option><option value="8">8.0h</option>
+                        </select>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Morning Mood</label>
+                        <input type="number" id="mood" class="w-full bg-transparent text-lg font-black text-emerald-600 focus:outline-none" placeholder="1-10">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-blue-50/50 p-3 rounded-2xl border border-blue-100">
+                        <label class="block text-[10px] font-bold text-blue-400 mb-1 uppercase">Sleep Score</label>
+                        <input type="number" id="sleepScore" list="sleepScoreList" class="w-full bg-transparent text-lg font-black text-blue-600 focus:outline-none" placeholder="0-100">
+                        <datalist id="sleepScoreList"><option value="95"><option value="80"><option value="60"></datalist>
+                    </div>
+                    <div class="bg-blue-50/50 p-3 rounded-2xl border border-blue-100">
+                        <label class="block text-[10px] font-bold text-blue-400 mb-1 uppercase">Resting HR</label>
+                        <input type="number" id="rhr" list="rhrList" class="w-full bg-transparent text-lg font-black text-blue-600 focus:outline-none" placeholder="bpm">
+                        <datalist id="rhrList"><option value="48"><option value="58"><option value="68"></datalist>
+                    </div>
+                </div>
+
+                <textarea id="note" rows="2" class="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm focus:outline-none" placeholder="오늘의 컨디션이나 특이사항을 적어주세요."></textarea>
+                <button onclick="saveMorningData()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl btn-active transition text-lg">아침 리포트 완료 🌅</button>
+            </div>
+
+            <div id="caffeineSection" class="hidden space-y-6">
+                <div class="bg-slate-900 rounded-3xl p-5 text-white shadow-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-[10px] font-black text-slate-400 tracking-widest uppercase">Intake Progress</h3>
+                        <span id="warningLabel" class="hidden text-[10px] bg-red-600 px-2 py-0.5 rounded warning-pulse font-bold">OVER LIMIT</span>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs mb-2"><span>☕ 카페인</span><span id="caffeineProgressText" class="font-black text-amber-400 italic">0 / 150 mg</span></div>
+                            <div class="w-full bg-slate-800 rounded-full h-1.5"><div id="caffeineProgressBar" class="bg-amber-400 h-full rounded-full progress-bar" style="width: 0%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-2"><span>🍬 당분</span><span id="sugarProgressText" class="font-black text-pink-400 italic">0 / 30 g</span></div>
+                            <div class="w-full bg-slate-800 rounded-full h-1.5"><div id="sugarProgressBar" class="bg-pink-400 h-full rounded-full progress-bar" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest text-center">Step 1. Drink Category</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="setDrink(150, '일반 커피', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition">☕ 일반 커피 (High)</button>
+                            <button onclick="setDrink(40, '차 / 음료', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition">🍵 차 / 차음료 (Mid)</button>
+                            <button onclick="setDrink(15, '디카페인', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition">🥛 디카페인 (Low)</button>
+                            <button onclick="setDrink(0, '물 / 무카페인', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition text-blue-500 font-black">💧 물 / No Caffeine</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest text-center">Step 2. Sugar Level</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button onclick="setSugar(25, '🚨 상', this)" class="sugar-btn bg-white border-2 border-slate-100 py-3 rounded-xl text-[10px] font-bold">25g</button>
+                            <button onclick="setSugar(10, '🟡 중', this)" class="sugar-btn bg-white border-2 border-slate-100 py-3 rounded-xl text-[10px] font-bold">10g</button>
+                            <button onclick="setSugar(5, '🟢 하', this)" class="sugar-btn bg-white border-2 border-slate-100 py-3 rounded-xl text-[10px] font-bold">5g</button>
+                            <button onclick="setSugar(0, 'X 없음', this)" class="sugar-btn bg-white border-2 border-slate-100 py-3 rounded-xl text-[10px] font-bold selected-item">0g</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-3xl border border-slate-200">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-3 text-center tracking-widest">Step 3. Mind & Body Status</label>
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                            <button onclick="setQuickMood(10, this)" class="mood-btn bg-white border border-slate-200 py-2 rounded-xl text-xs">🚀 최상</button>
+                            <button onclick="setQuickMood(7, this)" class="mood-btn bg-white border border-slate-200 py-2 rounded-xl text-xs selected-item">🙂 보통</button>
+                            <button onclick="setQuickMood(3, this)" class="mood-btn bg-white border border-slate-200 py-2 rounded-xl text-xs">📉 다운</button>
+                        </div>
+                        <input type="time" id="recordTime" class="w-full bg-white border border-slate-200 rounded-xl p-2 text-center font-bold text-sm mb-2 focus:ring-2 focus:ring-emerald-400">
+                        <textarea id="moodNote" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs focus:outline-none" placeholder="현재 기분이나 몸 상태는 어떤가요? (예: 오후가 되니 몸이 무겁다, 커피 직후 기분 업!)"></textarea>
+                    </div>
+
+                    <input type="hidden" id="caffeineValue" value="0">
+                    <input type="hidden" id="sugarValue" value="0">
+                    <input type="hidden" id="drinkName" value="">
+                    <input type="hidden" id="moodValue" value="7">
+
+                    <div class="flex gap-2">
+                        <button onclick="saveEntry(true)" class="flex-1 bg-slate-900 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">음료+상태 기록 🥤</button>
+                        <button onclick="saveEntry(false)" class="flex-1 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">상태만 기록 😊</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm h-52">
+                <canvas id="myChart"></canvas>
+            </div>
+
+            <div id="historyList" class="space-y-3 pb-10"></div>
+        </main>
+    </div>
+
+    <div id="modal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-[100] p-4">
+        <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onclick="toggleModal()"></div>
+        <div class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl z-[101] overflow-hidden flex flex-col p-8">
+            <h2 class="text-xl font-black text-emerald-600 mb-4 italic">"Data-driven Wellness."</h2>
+            <div class="text-xs text-slate-600 leading-relaxed space-y-3">
+                <p>✓ <strong>상태만 기록:</strong> 커피를 마시지 않아도 현재의 기분(업다운)을 수시로 기록해 보세요. 나중에 그래프로 패턴을 볼 수 있습니다.</p>
+                <p>✓ <strong>당분 g단위 추적:</strong> 당분 섭취도 카페인처럼 누적 수치로 관리하여 '슈거 하이'를 예방합니다.</p>
+                <p>✓ <strong>시계열 분석:</strong> 음료 섭취 전후의 기분 변화를 메모에 남기면 내 몸의 반응 속도를 알 수 있습니다.</p>
+            </div>
+            <button onclick="toggleModal()" class="w-full bg-emerald-600 text-white mt-6 py-4 rounded-xl font-black text-sm">기록 시작하기</button>
+        </div>
+    </div>
+
+    <script>
+        let allData = JSON.parse(localStorage.getItem('wellnessData')) || {};
+        let chartInstance = null;
+
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('targetDate').value = today;
+            updateTimeInput();
+            loadDailyData();
+            renderHistory();
+            renderChart();
+        };
+
+        function updateTimeInput() {
+            document.getElementById('recordTime').value = new Date().toTimeString().slice(0, 5);
+        }
+
+        function switchTab(tab) {
+            const isMorning = tab === 'morning';
+            document.getElementById('morningSection').classList.toggle('hidden', !isMorning);
+            document.getElementById('caffeineSection').classList.toggle('hidden', isMorning);
+            document.getElementById('tabMorning').className = isMorning ? 'flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active' : 'flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active';
+            document.getElementById('tabCaffeine').className = !isMorning ? 'flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active' : 'flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active';
+            if (!isMorning) updateProgressBars();
+        }
+
+        function loadDailyData() {
+            const date = document.getElementById('targetDate').value;
+            const d = allData[date] || { caffeineGoal: 150, sugarGoal: 30, mood: 8 };
+            document.getElementById('sleep').value = d.sleep || 7;
+            document.getElementById('mood').value = d.mood || 8;
+            document.getElementById('caffeineGoal').value = d.caffeineGoal !== undefined ? d.caffeineGoal : 150;
+            document.getElementById('sugarGoal').value = d.sugarGoal !== undefined ? d.sugarGoal : 30;
+            document.getElementById('sleepScore').value = d.sleepScore || '';
+            document.getElementById('rhr').value = d.rhr || '';
+            document.getElementById('note').value = d.note || '';
+            loadYesterdaySummary(date);
+            updateProgressBars();
+        }
+
+        function loadYesterdaySummary(currentDate) {
+            const yDate = new Date(new Date(currentDate).setDate(new Date(currentDate).getDate() - 1)).toISOString().split('T')[0];
+            const yd = allData[yDate];
+            const div = document.getElementById('yesterdaySummary');
+            if (!yd) { div.innerHTML = '<p class="col-span-2 text-slate-400 font-normal italic py-1">어제 기록이 없습니다.</p>'; return; }
+            const totalC = yd.logs ? yd.logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0) : 0;
+            const totalS = yd.logs ? yd.logs.reduce((s, l) => s + (l.sugar > 0 ? l.sugar : 0), 0) : 0;
+            div.innerHTML = `
+                <div>SLEEP: ${yd.sleep}h (${yd.sleepScore || '-'}pt)</div>
+                <div>CAFF: ${totalC}mg / SUGAR: ${totalS}g</div>
+                <div>RHR: ${yd.rhr || '-'}bpm</div>
+                <div>AVG MOOD: <span class="text-emerald-600">${yd.mood}/10</span></div>
+            `;
+        }
+
+        function updateProgressBars() {
+            const date = document.getElementById('targetDate').value;
+            const d = allData[date] || { logs: [] };
+            const goalC = Number(document.getElementById('caffeineGoal').value);
+            const goalS = Number(document.getElementById('sugarGoal').value);
+            const curC = d.logs ? d.logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0) : 0;
+            const curS = d.logs ? d.logs.reduce((s, l) => s + (l.sugar > 0 ? l.sugar : 0), 0) : 0;
+            const pC = Math.min((curC / (goalC || 1)) * 100, 100);
+            const pS = Math.min((curS / (goalS || 1)) * 100, 100);
+            document.getElementById('caffeineProgressText').innerText = `${curC} / ${goalC} mg`;
+            document.getElementById('caffeineProgressBar').style.width = `${pC}%`;
+            document.getElementById('sugarProgressText').innerText = `${curS} / ${goalS} g`;
+            document.getElementById('sugarProgressBar').style.width = `${pS}%`;
+            document.getElementById('warningLabel').classList.toggle('hidden', curC <= goalC && curS <= goalS);
+        }
+
+        function setDrink(mg, name, btn) {
+            document.getElementById('caffeineValue').value = mg;
+            document.getElementById('drinkName').value = name;
+            document.querySelectorAll('.drink-btn').forEach(b => b.classList.remove('selected-item'));
+            btn.classList.add('selected-item');
+        }
+
+        function setSugar(val, label, btn) {
+            document.getElementById('sugarValue').value = val;
+            document.querySelectorAll('.sugar-btn').forEach(b => b.classList.remove('selected-item'));
+            btn.classList.add('selected-item');
+        }
+
+        function setQuickMood(val, btn) {
+            document.getElementById('moodValue').value = val;
+            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected-item'));
+            btn.classList.add('selected-item');
+        }
+
+        function saveMorningData() {
+            const date = document.getElementById('targetDate').value;
+            if (!allData[date]) allData[date] = { logs: [] };
+            Object.assign(allData[date], {
+                sleep: Number(document.getElementById('sleep').value),
+                mood: Number(document.getElementById('mood').value),
+                caffeineGoal: Number(document.getElementById('caffeineGoal').value),
+                sugarGoal: Number(document.getElementById('sugarGoal').value),
+                sleepScore: Number(document.getElementById('sleepScore').value),
+                rhr: Number(document.getElementById('rhr').value),
+                note: document.getElementById('note').value
+            });
+            localStorage.setItem('wellnessData', JSON.stringify(allData));
+            alert("아침 리포트와 목표가 저장되었습니다.");
+            loadDailyData(); renderHistory(); renderChart();
+        }
+
+        function saveEntry(isIntake) {
+            const date = document.getElementById('targetDate').value;
+            const mg = isIntake ? Number(document.getElementById('caffeineValue').value) : 0;
+            const sugar = isIntake ? Number(document.getElementById('sugarValue').value) : 0;
+            const name = isIntake ? (document.getElementById('drinkName').value || "선택 안됨") : "상태 체크";
+            const mood = Number(document.getElementById('moodValue').value);
+            const note = document.getElementById('moodNote').value;
+            
+            if (!allData[date]) allData[date] = { logs: [] };
+            allData[date].logs.push({
+                id: Date.now(),
+                time: document.getElementById('recordTime').value,
+                amount: mg,
+                name: name,
+                sugar: sugar,
+                mood: mood,
+                note: note
+            });
+            localStorage.setItem('wellnessData', JSON.stringify(allData));
+            alert(isIntake ? "섭취 및 상태가 기록되었습니다." : "현재 상태가 기록되었습니다.");
+            document.getElementById('moodNote').value = '';
+            updateTimeInput(); loadDailyData(); renderHistory(); renderChart();
+        }
+
+        function deleteRecord(date, recordId) {
+            if (!confirm("이 기록을 삭제할까요?")) return;
+            allData[date].logs = allData[date].logs.filter(l => l.id !== recordId);
+            localStorage.setItem('wellnessData', JSON.stringify(allData));
+            renderHistory(); updateProgressBars(); renderChart();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            const sortedDates = Object.keys(allData).sort().reverse().slice(0, 5);
+            sortedDates.forEach(date => {
+                const d = allData[date];
+                const logs = d.logs || [];
+                const div = document.createElement('div');
+                div.className = 'bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-2';
+                let logsHtml = logs.sort((a,b)=>a.time.localeCompare(b.time)).map(l => `
+                    <div class="bg-slate-50 px-3 py-2 rounded-2xl text-[10px] space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-black text-slate-800">${l.time} - ${l.name}</span>
+                            <button onclick="deleteRecord('${date}', ${l.id})" class="text-red-300">삭제</button>
+                        </div>
+                        <div class="flex gap-2 text-slate-500 font-bold">
+                            <span>☕ ${l.amount >= 0 ? l.amount+'mg' : 'Water'}</span>
+                            <span>🍬 ${l.sugar}g</span>
+                            <span class="text-emerald-600">😊 컨디션: ${l.mood}</span>
+                        </div>
+                        ${l.note ? `<p class="text-slate-400 italic font-medium leading-tight">"${l.note}"</p>` : ''}
+                    </div>
+                `).join('');
+                div.innerHTML = `
+                    <div class="flex justify-between items-center"><span class="text-[9px] font-black text-slate-400 uppercase">${date}</span><span class="text-xs font-black text-emerald-600">${d.mood} Morning pt</span></div>
+                    <div class="space-y-1.5">${logsHtml || '<p class="text-[10px] text-slate-300 italic px-2 py-1">기록 없음</p>'}</div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const dates = Object.keys(allData).sort().slice(-7);
+            const moodData = dates.map(d => allData[d].mood || 0);
+            const caffeineData = dates.map(d => allData[d].logs ? allData[d].logs.reduce((s,l)=>s+(l.amount > 0 ? l.amount : 0), 0) : 0);
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dates.map(d => d.slice(5)),
+                    datasets: [
+                        { label: 'Caffeine', data: caffeineData, backgroundColor: 'rgba(245, 158, 11, 0.2)', borderRadius: 4, yAxisID: 'y1' },
+                        { label: 'Morning Condition', data: moodData, type: 'line', borderColor: '#10b981', borderWidth: 2, tension: 0.4, pointRadius: 0, yAxisID: 'y' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                    scales: {
+                        y: { position: 'left', min: 0, max: 10, ticks: { display: false }, grid: { display: false } },
+                        y1: { position: 'right', min: 0, max: 600, ticks: { display: false }, grid: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        function toggleModal() {
+            const m = document.getElementById('modal');
+            m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none');
+        }
+
+        function exportData() {
+            const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `wellness_log_v2.2.json`; a.click();
+        }
+    </script>
+</body>
+</html>
