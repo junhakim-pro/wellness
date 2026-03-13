@@ -414,11 +414,11 @@ async function updateRealtimeWeather() {
     const tempElement = document.getElementById('temp-display');
 
     const hour = new Date().getHours();
-    let greeting = "안녕하세요, 준하님!";
-    if (hour >= 5 && hour < 12) greeting = "좋은 아침입니다, 준하님! 🌅";
-    else if (hour >= 12 && hour < 18) greeting = "활기찬 오후입니다, 준하님! ☕";
+    let greeting = "안녕하세요, 사용자님!";
+    if (hour >= 5 && hour < 12) greeting = "좋은 아침입니다, 사용자님! 🌅";
+    else if (hour >= 12 && hour < 18) greeting = "활기찬 오후입니다, 사용자님! ☕";
     else if (hour >= 18 && hour < 22) greeting = "오늘도 수고하셨어요! 🌙";
-    else greeting = "평안한 밤 되세요, 준하님! ✨";
+    else greeting = "평안한 밤 되세요, 사용자님! ✨";
     
     if(greetElement) greetElement.innerText = greeting;
 
