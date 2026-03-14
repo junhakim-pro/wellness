@@ -43,7 +43,10 @@
             <div class="flex justify-between items-center">
                 <div>
                     <h2 id="weather-greet" class="text-sm font-bold italic">데이터 로딩 중...</h2>
-                    <p id="weather-desc" class="text-[11px] opacity-90 tracking-tight">서울 날씨와 정보를 확인하고 있습니다.</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span id="weatherSourceBadge" class="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-white/20 tracking-[0.16em]">RULE</span>
+                        <p id="weather-desc" class="text-[11px] opacity-90 tracking-tight">서울 날씨와 정보를 확인하고 있습니다.</p>
+                    </div>
                 </div>
                 <div class="text-right">
                     <span id="temp-display" class="text-2xl font-black">--°C</span>
@@ -164,7 +167,7 @@
                 </div>
 
                 <textarea id="note" rows="2" class="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm focus:outline-none" placeholder="오늘의 컨디션이나 특이사항을 적어주세요."></textarea>
-                <button onclick="saveMorningData()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl btn-active transition text-lg">아침 리포트 완료 🌅</button>
+                <button onclick="saveMorningData()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl btn-active transition text-base">아침 컨디션 기록 · 금일 목표 설정 완료 🌅</button>
 
                 <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4">
                     <h3 class="text-[10px] font-black text-amber-700 uppercase tracking-[0.2em] mb-2">Current Scope</h3>
@@ -193,9 +196,18 @@
                     </div>
                 </div>
 
+                <div class="bg-slate-50 border border-slate-200 rounded-3xl p-4 shadow-sm">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">How To Use</p>
+                    <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
+                        <p><strong>음료를 마셨다면:</strong> Step 1-2-3을 순서대로 선택하고 <strong>음료+상태 기록</strong>을 눌러주세요.</p>
+                        <p><strong>몇 시간 뒤 컨디션만 변했다면:</strong> 음료를 고르지 않아도 아래 상태만 입력한 뒤 <strong>상태만 기록</strong>을 눌러도 됩니다.</p>
+                    </div>
+                </div>
+
                 <div class="space-y-6">
                     <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest text-center">Step 1. Drink Category</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest text-center">Step 1. Drink Category</label>
+                        <p class="text-[11px] text-slate-500 text-center mb-3">음료를 마셨을 때만 선택하세요. 상태만 기록할 때는 건너뛰어도 됩니다.</p>
                         <div class="grid grid-cols-2 gap-2">
                             <button onclick="setDrink(150, '일반 커피', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition">☕ 일반 커피 (High)</button>
                             <button onclick="setDrink(40, '차 / 음료', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition">🍵 차 / 차음료 (Mid)</button>
@@ -215,7 +227,8 @@
                     </div>
 
                     <div class="bg-slate-50 p-4 rounded-3xl border border-slate-200">
-                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-3 text-center tracking-widest">Step 3. Mind & Body Status</label>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 text-center tracking-widest">Step 3. Mind & Body Status</label>
+                        <p class="text-[11px] text-slate-500 text-center mb-3">음료 직후에도, 몇 시간 뒤 갑자기 컨디션이 달라졌을 때도 여기만 기록할 수 있어요.</p>
                         <div class="grid grid-cols-3 gap-2 mb-3">
                             <button onclick="setQuickMood(10, this)" class="mood-btn bg-white border border-slate-200 py-2 rounded-xl text-xs">🚀 최상</button>
                             <button onclick="setQuickMood(7, this)" class="mood-btn bg-white border border-slate-200 py-2 rounded-xl text-xs selected-item">🙂 보통</button>
@@ -231,8 +244,8 @@
                     <input type="hidden" id="moodValue" value="7">
 
                     <div class="flex gap-2">
-                        <button onclick="saveEntry(true)" class="flex-1 bg-slate-900 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">음료+상태 기록 🥤</button>
-                        <button onclick="saveEntry(false)" class="flex-1 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">상태만 기록 😊</button>
+                        <button onclick="saveEntry(true)" class="flex-1 bg-slate-900 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">음료 마신 직후 기록 🥤</button>
+                        <button onclick="saveEntry(false)" class="flex-1 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">몇 시간 뒤 상태만 기록 😊</button>
                     </div>
                 </div>
             </div>
@@ -456,10 +469,12 @@
             const cacheKey = getBannerCacheKey(dateStr, userId);
             const cached = localStorage.getItem(cacheKey);
             const desc = document.getElementById("weather-desc");
+            const badge = document.getElementById("weatherSourceBadge");
 
             if (cached) {
                 const data = JSON.parse(cached);
                 if (desc) desc.innerText = data.message;
+                if (badge) badge.innerText = "AI";
                 return;
             }
 
@@ -476,8 +491,10 @@
                 if (!response.ok) throw new Error(data.error || "AI banner failed");
                 localStorage.setItem(cacheKey, JSON.stringify(data));
                 if (desc) desc.innerText = data.message;
+                if (badge) badge.innerText = "AI";
             } catch (e) {
                 console.error("배너 AI 멘트 로딩 실패:", e);
+                if (badge) badge.innerText = "RULE";
             }
         }
 
@@ -592,7 +609,9 @@
                 const data = await res.json();
                 const cur = data.current_condition[0];
                 if (temp) temp.innerText = `${cur.temp_C}°C`;
-                if (desc) desc.innerText = `서울: ${cur.weatherDesc[0].value} | 습도: ${cur.humidity}% | 오늘 목표와 카페인 한도를 가볍게 정해보세요.`;
+                if (desc) desc.innerText = `서울: ${cur.weatherDesc[0].value} | 습도 ${cur.humidity}% | 오늘 목표와 카페인 한도를 가볍게 정해보세요.`;
+                const badge = document.getElementById("weatherSourceBadge");
+                if (badge) badge.innerText = "RULE";
                 await loadAIBanner({
                     temp_c: cur.temp_C,
                     humidity: cur.humidity,
