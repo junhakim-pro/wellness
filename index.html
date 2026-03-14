@@ -18,12 +18,11 @@
 </head>
 <body class="text-slate-900 pb-10">
     <div class="max-w-md mx-auto min-h-screen bg-white shadow-2xl relative flex flex-col">
-        
         <div id="login-container" class="bg-slate-50 p-4 border-b flex justify-center">
-            <script async src="https://telegram.org/js/telegram-widget.js?22" 
-                    data-telegram-login="wellnesslog28_bot" 
-                    data-size="medium" 
-                    data-onauth="onTelegramAuth(user)" 
+            <script async src="https://telegram.org/js/telegram-widget.js?22"
+                    data-telegram-login="wellnesslog28_bot"
+                    data-size="medium"
+                    data-onauth="onTelegramAuth(user)"
                     data-request-access="write"></script>
         </div>
 
@@ -56,7 +55,6 @@
         </nav>
 
         <main class="p-4 space-y-6 flex-1">
-            
             <div id="morningSection" class="space-y-5">
                 <div class="bg-slate-100 border border-slate-200 rounded-2xl p-4 shadow-inner">
                     <h3 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Yesterday Performance</h3>
@@ -189,7 +187,7 @@
             <div class="mt-10 mb-6 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 text-center shadow-inner">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Voice of User</p>
                 <h4 class="text-sm font-bold text-slate-800 mb-4 leading-tight">사용자님의 웰니스 로그는<br>여러분의 피드백으로 성장합니다!</h4>
-                <a href="https://forms.gle/T2bkFKMdgLc5Vh529" target="_blank" 
+                <a href="https://forms.gle/T2bkFKMdgLc5Vh529" target="_blank"
                    class="inline-block bg-slate-900 text-white px-10 py-4 rounded-2xl text-xs font-black shadow-xl btn-active transition hover:bg-emerald-600">
                     10초만에 의견 남기기 🎤
                 </a>
@@ -211,34 +209,59 @@
     </div>
 
     <script>
-        // [설정] 알리바바 서버 주소 및 봇 정보
-        const ALIBABA_URL = "https://wellnesot-brain-unwrkhiccv.ap-northeast-2.fcapp.run"; 
-        let allData = JSON.parse(localStorage.getItem('wellnessData')) || {};
+        const ALIBABA_URL = "https://wellnesot-brain-unwrkhiccv.ap-northeast-2.fcapp.run";
+        let allData = JSON.parse(localStorage.getItem("wellnessData")) || {};
         let chartInstance = null;
 
-        // 1. 텔레그램 로그인 성공 시 호출되는 함수
-        function onTelegramAuth(user) {
-            console.log("로그인 성공!", user);
-            localStorage.setItem('telegram_user_id', user.id);
-            localStorage.setItem('telegram_user_name', user.first_name);
-            alert(`${user.first_name}님, 환영합니다!`);
-            location.reload(); // 페이지를 새로고침하여 데이터를 불러옵니다.
+        function persistLocalData() {
+            localStorage.setItem("wellnessData", JSON.stringify(allData));
         }
 
-        // 2. 통합된 window.onload (페이지가 열릴 때 딱 한 번 실행됨)
-        window.onload = async function() {
-            // 기본 세팅
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('targetDate').value = today;
+        function getTelegramUserId() {
+            return localStorage.getItem("telegram_user_id");
+        }
+
+        async function syncLogToCloud(payload) {
+            const userId = getTelegramUserId();
+            if (!userId) {
+                return { ok: false, skipped: true, reason: "not_logged_in" };
+            }
+
+            const response = await fetch(`${ALIBABA_URL}/api/log`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: userId,
+                    ...payload
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "서버 저장 실패");
+            }
+
+            return result;
+        }
+
+        function onTelegramAuth(user) {
+            console.log("로그인 성공!", user);
+            localStorage.setItem("telegram_user_id", user.id);
+            localStorage.setItem("telegram_user_name", user.first_name);
+            alert(`${user.first_name}님, 환영합니다!`);
+            location.reload();
+        }
+
+        window.onload = async function () {
+            const today = new Date().toISOString().split("T")[0];
+            document.getElementById("targetDate").value = today;
             updateTimeInput();
             updateRealtimeWeather();
 
-            // 로그인 정보 확인
-            const savedId = localStorage.getItem('telegram_user_id');
-            const userName = localStorage.getItem('telegram_user_name');
+            const savedId = localStorage.getItem("telegram_user_id");
+            const userName = localStorage.getItem("telegram_user_name");
 
             if (savedId) {
-                // 로그인 완료 시: 로그인 버튼 숨기기 (선택 사항)
                 console.log(`${userName}(${savedId}) 사용자로 데이터 동기화 시작`);
                 await loadCloudData(savedId);
             } else {
@@ -246,21 +269,33 @@
             }
         };
 
-        // 3. 클라우드에서 데이터를 가져오는 핵심 함수
         async function loadCloudData(userId) {
             try {
                 const response = await fetch(`${ALIBABA_URL}?user_id=${userId}`);
                 const dbData = await response.json();
-                
+
                 console.log("DB에서 받은 데이터:", dbData);
 
                 dbData.forEach(item => {
                     const date = new Date(item.timestamp);
-                    const dateStr = date.toLocaleDateString('en-CA'); 
+                    const dateStr = date.toLocaleDateString("en-CA");
                     const timeStr = date.toTimeString().slice(0, 5);
-                    
+
                     if (!allData[dateStr]) allData[dateStr] = { logs: [], mood: 7, sleep: 7 };
-                    
+
+                    if (item.type === "morning") {
+                        Object.assign(allData[dateStr], {
+                            sleep: item.sleep || 7,
+                            mood: item.mood || 8,
+                            caffeineGoal: item.caffeineGoal !== null && item.caffeineGoal !== undefined ? item.caffeineGoal : 150,
+                            sugarGoal: item.sugarGoal !== null && item.sugarGoal !== undefined ? item.sugarGoal : 30,
+                            sleepScore: item.sleepScore || "",
+                            rhr: item.rhr || "",
+                            note: item.note || ""
+                        });
+                        return;
+                    }
+
                     if (!allData[dateStr].logs.find(l => l.id === item.timestamp)) {
                         allData[dateStr].logs.push({
                             id: item.timestamp,
@@ -268,221 +303,282 @@
                             amount: item.caffeine,
                             sugar: item.sugar,
                             name: item.text,
-                            mood: 7
+                            mood: item.mood || 7,
+                            note: item.note || ""
                         });
                     }
                 });
 
+                persistLocalData();
                 console.log("최종 변환된 데이터(allData):", allData);
+                loadDailyData();
                 renderHistory();
                 renderChart();
                 updateProgressBars();
             } catch (e) {
                 console.error("데이터 로딩 실패:", e);
-                loadDailyData(); renderHistory(); renderChart();
+                loadDailyData();
+                renderHistory();
+                renderChart();
             }
-        };
+        }
 
         function updateTimeInput() {
-            document.getElementById('recordTime').value = new Date().toTimeString().slice(0, 5);
+            document.getElementById("recordTime").value = new Date().toTimeString().slice(0, 5);
         }
 
         function switchTab(tab) {
-            const isMorning = tab === 'morning';
-            document.getElementById('morningSection').classList.toggle('hidden', !isMorning);
-            document.getElementById('caffeineSection').classList.toggle('hidden', isMorning);
-            document.getElementById('tabMorning').className = isMorning ? 'flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active' : 'flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active';
-            document.getElementById('tabCaffeine').className = !isMorning ? 'flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active' : 'flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active';
+            const isMorning = tab === "morning";
+            document.getElementById("morningSection").classList.toggle("hidden", !isMorning);
+            document.getElementById("caffeineSection").classList.toggle("hidden", isMorning);
+            document.getElementById("tabMorning").className = isMorning ? "flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active" : "flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active";
+            document.getElementById("tabCaffeine").className = !isMorning ? "flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active" : "flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active";
             if (!isMorning) updateProgressBars();
         }
 
         async function updateRealtimeWeather() {
-            const greet = document.getElementById('weather-greet');
-            const desc = document.getElementById('weather-desc');
-            const temp = document.getElementById('temp-display');
+            const greet = document.getElementById("weather-greet");
+            const desc = document.getElementById("weather-desc");
+            const temp = document.getElementById("temp-display");
             const hour = new Date().getHours();
             let msg = "안녕하세요, 사용자님!";
             if (hour >= 5 && hour < 12) msg = "좋은 아침입니다, 사용자님! 🌅";
             else if (hour >= 12 && hour < 18) msg = "활기찬 오후입니다, 사용자님! ☕";
             else if (hour >= 18 && hour < 22) msg = "오늘도 수고하셨어요! 🌙";
             else msg = "평안한 밤 되세요, 사용자님! ✨";
-            if(greet) greet.innerText = msg;
+            if (greet) greet.innerText = msg;
             try {
-                const res = await fetch('https://wttr.in/Seoul?format=j1');
+                const res = await fetch("https://wttr.in/Seoul?format=j1");
                 const data = await res.json();
                 const cur = data.current_condition[0];
-                if(temp) temp.innerText = `${cur.temp_C}°C`;
-                if(desc) desc.innerText = `서울: ${cur.weatherDesc[0].value} | 습도: ${cur.humidity}% | 웰니스 로그를 시작해 보세요!`;
+                if (temp) temp.innerText = `${cur.temp_C}°C`;
+                if (desc) desc.innerText = `서울: ${cur.weatherDesc[0].value} | 습도: ${cur.humidity}% | 웰니스 로그를 시작해 보세요!`;
             } catch (e) {
-                if(desc) desc.innerText = "현재 실시간 날씨 정보를 불러올 수 없습니다.";
+                if (desc) desc.innerText = "현재 실시간 날씨 정보를 불러올 수 없습니다.";
             }
         }
 
         function loadDailyData() {
-            const date = document.getElementById('targetDate').value;
+            const date = document.getElementById("targetDate").value;
             const d = allData[date] || { caffeineGoal: 150, sugarGoal: 30, mood: 8 };
-            document.getElementById('sleep').value = d.sleep || 7;
-            document.getElementById('mood').value = d.mood || 8;
-            document.getElementById('caffeineGoal').value = d.caffeineGoal !== undefined ? d.caffeineGoal : 150;
-            document.getElementById('sugarGoal').value = d.sugarGoal !== undefined ? d.sugarGoal : 30;
-            document.getElementById('sleepScore').value = d.sleepScore || '';
-            document.getElementById('rhr').value = d.rhr || '';
-            document.getElementById('note').value = d.note || '';
+            document.getElementById("sleep").value = d.sleep || 7;
+            document.getElementById("mood").value = d.mood || 8;
+            document.getElementById("caffeineGoal").value = d.caffeineGoal !== undefined ? d.caffeineGoal : 150;
+            document.getElementById("sugarGoal").value = d.sugarGoal !== undefined ? d.sugarGoal : 30;
+            document.getElementById("sleepScore").value = d.sleepScore || "";
+            document.getElementById("rhr").value = d.rhr || "";
+            document.getElementById("note").value = d.note || "";
             loadYesterdaySummary(date);
             updateProgressBars();
         }
 
         function loadYesterdaySummary(currentDate) {
-            const yDate = new Date(new Date(currentDate).setDate(new Date(currentDate).getDate() - 1)).toISOString().split('T')[0];
+            const yDate = new Date(new Date(currentDate).setDate(new Date(currentDate).getDate() - 1)).toISOString().split("T")[0];
             const yd = allData[yDate];
-            const div = document.getElementById('yesterdaySummary');
-            if (!yd) { div.innerHTML = '<p class="col-span-2 text-slate-400 font-normal italic py-1 text-center w-full">어제 기록이 없습니다.</p>'; return; }
+            const div = document.getElementById("yesterdaySummary");
+            if (!yd) {
+                div.innerHTML = '<p class="col-span-2 text-slate-400 font-normal italic py-1 text-center w-full">어제 기록이 없습니다.</p>';
+                return;
+            }
             const totalC = yd.logs ? yd.logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0) : 0;
             const totalS = yd.logs ? yd.logs.reduce((s, l) => s + (l.sugar > 0 ? l.sugar : 0), 0) : 0;
             div.innerHTML = `
-                <div>SLEEP: ${yd.sleep}h (${yd.sleepScore || '-'}pt)</div>
+                <div>SLEEP: ${yd.sleep}h (${yd.sleepScore || "-"}pt)</div>
                 <div>CAFF: ${totalC}mg / SUGAR: ${totalS}g</div>
-                <div>RHR: ${yd.rhr || '-'}bpm</div>
+                <div>RHR: ${yd.rhr || "-"}bpm</div>
                 <div>MOOD: <span class="text-emerald-600">${yd.mood}/10</span></div>
             `;
         }
 
         function updateProgressBars() {
-            const date = document.getElementById('targetDate').value;
+            const date = document.getElementById("targetDate").value;
             const d = allData[date] || { logs: [] };
-            const goalC = Number(document.getElementById('caffeineGoal').value);
-            const goalS = Number(document.getElementById('sugarGoal').value);
+            const goalC = Number(document.getElementById("caffeineGoal").value);
+            const goalS = Number(document.getElementById("sugarGoal").value);
             const curC = d.logs ? d.logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0) : 0;
             const curS = d.logs ? d.logs.reduce((s, l) => s + (l.sugar > 0 ? l.sugar : 0), 0) : 0;
             const pC = Math.min((curC / (goalC || 1)) * 100, 100);
             const pS = Math.min((curS / (goalS || 1)) * 100, 100);
-            document.getElementById('caffeineProgressText').innerText = `${curC} / ${goalC} mg`;
-            document.getElementById('caffeineProgressBar').style.width = `${pC}%`;
-            document.getElementById('sugarProgressText').innerText = `${curS} / ${goalS} g`;
-            document.getElementById('sugarProgressBar').style.width = `${pS}%`;
-            document.getElementById('warningLabel').classList.toggle('hidden', curC <= goalC && curS <= goalS);
+            document.getElementById("caffeineProgressText").innerText = `${curC} / ${goalC} mg`;
+            document.getElementById("caffeineProgressBar").style.width = `${pC}%`;
+            document.getElementById("sugarProgressText").innerText = `${curS} / ${goalS} g`;
+            document.getElementById("sugarProgressBar").style.width = `${pS}%`;
+            document.getElementById("warningLabel").classList.toggle("hidden", curC <= goalC && curS <= goalS);
         }
 
         function setDrink(mg, name, btn) {
-            document.getElementById('caffeineValue').value = mg;
-            document.getElementById('drinkName').value = name;
-            document.querySelectorAll('.drink-btn').forEach(b => b.classList.remove('selected-item'));
-            btn.classList.add('selected-item');
+            document.getElementById("caffeineValue").value = mg;
+            document.getElementById("drinkName").value = name;
+            document.querySelectorAll(".drink-btn").forEach(b => b.classList.remove("selected-item"));
+            btn.classList.add("selected-item");
         }
 
         function setSugar(val, label, btn) {
-            document.getElementById('sugarValue').value = val;
-            document.querySelectorAll('.sugar-btn').forEach(b => b.classList.remove('selected-item'));
-            btn.classList.add('selected-item');
+            document.getElementById("sugarValue").value = val;
+            document.querySelectorAll(".sugar-btn").forEach(b => b.classList.remove("selected-item"));
+            btn.classList.add("selected-item");
         }
 
         function setQuickMood(val, btn) {
-            document.getElementById('moodValue').value = val;
-            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected-item'));
-            btn.classList.add('selected-item');
+            document.getElementById("moodValue").value = val;
+            document.querySelectorAll(".mood-btn").forEach(b => b.classList.remove("selected-item"));
+            btn.classList.add("selected-item");
         }
 
-        function saveMorningData() {
-            const date = document.getElementById('targetDate').value;
+        async function saveMorningData() {
+            const date = document.getElementById("targetDate").value;
             if (!allData[date]) allData[date] = { logs: [] };
-            Object.assign(allData[date], {
-                sleep: Number(document.getElementById('sleep').value),
-                mood: Number(document.getElementById('mood').value),
-                caffeineGoal: Number(document.getElementById('caffeineGoal').value),
-                sugarGoal: Number(document.getElementById('sugarGoal').value),
-                sleepScore: Number(document.getElementById('sleepScore').value),
-                rhr: Number(document.getElementById('rhr').value),
-                note: document.getElementById('note').value
+            const morningPayload = {
+                sleep: Number(document.getElementById("sleep").value),
+                mood: Number(document.getElementById("mood").value),
+                caffeineGoal: Number(document.getElementById("caffeineGoal").value),
+                sugarGoal: Number(document.getElementById("sugarGoal").value),
+                sleepScore: Number(document.getElementById("sleepScore").value) || 0,
+                rhr: Number(document.getElementById("rhr").value) || 0,
+                note: document.getElementById("note").value
+            };
+
+            Object.assign(allData[date], morningPayload);
+            persistLocalData();
+
+            try {
+                await syncLogToCloud({
+                    type: "morning",
+                    timestamp: new Date(`${date}T06:00:00`).getTime(),
+                    text: "아침 리포트",
+                    ...morningPayload
+                });
+                alert("저장되었습니다. 아침 리포트가 서버에도 저장됐어요.");
+            } catch (e) {
+                console.error("아침 리포트 서버 저장 실패:", e);
+                alert("기기에는 저장됐지만 서버 저장은 실패했습니다.");
+            }
+
+            loadDailyData();
+            renderHistory();
+            renderChart();
+        }
+
+        async function saveEntry(isIntake) {
+            const date = document.getElementById("targetDate").value;
+            const mg = isIntake ? Number(document.getElementById("caffeineValue").value) : 0;
+            const sugar = isIntake ? Number(document.getElementById("sugarValue").value) : 0;
+            const name = isIntake ? (document.getElementById("drinkName").value || "선택 안됨") : "상태 체크";
+            const mood = Number(document.getElementById("moodValue").value);
+            const note = document.getElementById("moodNote").value;
+            const timestamp = Date.now();
+            if (!allData[date]) allData[date] = { logs: [] };
+            allData[date].logs.push({
+                id: timestamp,
+                time: document.getElementById("recordTime").value,
+                amount: mg,
+                name: name,
+                sugar: sugar,
+                mood: mood,
+                note: note
             });
-            localStorage.setItem('wellnessData', JSON.stringify(allData));
-            alert("저장되었습니다. 사용자님, 오늘도 최고의 하루 보내세요!");
-            loadDailyData(); renderHistory(); renderChart();
-        }
+            persistLocalData();
 
-        function saveEntry(isIntake) {
-            const date = document.getElementById('targetDate').value;
-            const mg = isIntake ? Number(document.getElementById('caffeineValue').value) : 0;
-            const sugar = isIntake ? Number(document.getElementById('sugarValue').value) : 0;
-            const name = isIntake ? (document.getElementById('drinkName').value || "선택 안됨") : "상태 체크";
-            const mood = Number(document.getElementById('moodValue').value);
-            const note = document.getElementById('moodNote').value;
-            if (!allData[date]) allData[date] = { logs: [] };
-            allData[date].logs.push({ id: Date.now(), time: document.getElementById('recordTime').value, amount: mg, name: name, sugar: sugar, mood: mood, note: note });
-            localStorage.setItem('wellnessData', JSON.stringify(allData));
-            document.getElementById('moodNote').value = '';
-            updateTimeInput(); loadDailyData(); renderHistory(); renderChart();
+            try {
+                await syncLogToCloud({
+                    type: "entry",
+                    timestamp: timestamp,
+                    text: name,
+                    caffeine: mg,
+                    sugar: sugar,
+                    mood: mood,
+                    note: note
+                });
+            } catch (e) {
+                console.error("기록 서버 저장 실패:", e);
+                alert("기기에는 저장됐지만 서버 저장은 실패했습니다.");
+            }
+
+            document.getElementById("moodNote").value = "";
+            updateTimeInput();
+            loadDailyData();
+            renderHistory();
+            renderChart();
         }
 
         function deleteRecord(date, recordId) {
             if (!confirm("삭제할까요?")) return;
             allData[date].logs = allData[date].logs.filter(l => l.id !== recordId);
-            localStorage.setItem('wellnessData', JSON.stringify(allData));
-            renderHistory(); updateProgressBars(); renderChart();
+            persistLocalData();
+            renderHistory();
+            updateProgressBars();
+            renderChart();
         }
 
         function renderHistory() {
-            const list = document.getElementById('historyList');
-            list.innerHTML = '';
+            const list = document.getElementById("historyList");
+            list.innerHTML = "";
             const sortedDates = Object.keys(allData).sort().reverse().slice(0, 5);
             sortedDates.forEach(date => {
                 const d = allData[date];
-                const logs = (d.logs || []).sort((a,b)=>a.time.localeCompare(b.time));
-                const div = document.createElement('div');
-                div.className = 'bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-2';
-                let logsHtml = logs.map(l => `
+                const logs = (d.logs || []).sort((a, b) => a.time.localeCompare(b.time));
+                const div = document.createElement("div");
+                div.className = "bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-2";
+                const logsHtml = logs.map(l => `
                     <div class="bg-slate-50 px-3 py-2 rounded-2xl text-[10px] space-y-1">
                         <div class="flex justify-between items-center">
                             <span class="font-black text-slate-800">${l.time} - ${l.name}</span>
                             <button onclick="deleteRecord('${date}', ${l.id})" class="text-red-300 font-bold">삭제</button>
                         </div>
                         <div class="flex gap-2 text-slate-500 font-bold">
-                            <span>☕ ${l.amount >= 0 ? l.amount+'mg' : 'Water'}</span>
+                            <span>☕ ${l.amount >= 0 ? l.amount + "mg" : "Water"}</span>
                             <span>🍬 ${l.sugar}g</span>
                             <span class="text-emerald-600">😊 상태: ${l.mood}pt</span>
                         </div>
-                        ${l.note ? `<p class="text-slate-400 italic font-medium leading-tight">"${l.note}"</p>` : ''}
+                        ${l.note ? `<p class="text-slate-400 italic font-medium leading-tight">"${l.note}"</p>` : ""}
                     </div>
-                `).join('');
+                `).join("");
                 div.innerHTML = `<div class="flex justify-between items-center"><span class="text-[9px] font-black text-slate-400 uppercase">${date}</span><span class="text-xs font-black text-emerald-600">${d.mood} Morning pt</span></div><div class="space-y-1.5">${logsHtml || '<p class="text-[10px] text-slate-300 italic px-2 py-1">기록 없음</p>'}</div>`;
                 list.appendChild(div);
             });
         }
 
         function renderChart() {
-            const ctx = document.getElementById('myChart').getContext('2d');
+            const ctx = document.getElementById("myChart").getContext("2d");
             const dates = Object.keys(allData).sort().slice(-7);
             const moodData = dates.map(d => allData[d].mood || 0);
-            const caffeineData = dates.map(d => allData[d].logs ? allData[d].logs.reduce((s,l)=>s+(l.amount > 0 ? l.amount : 0), 0) : 0);
+            const caffeineData = dates.map(d => allData[d].logs ? allData[d].logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0) : 0);
             if (chartInstance) chartInstance.destroy();
             chartInstance = new Chart(ctx, {
-                type: 'bar',
+                type: "bar",
                 data: {
                     labels: dates.map(d => d.slice(5)),
                     datasets: [
-                        { label: 'Caffeine', data: caffeineData, backgroundColor: 'rgba(245, 158, 11, 0.2)', borderRadius: 4, yAxisID: 'y1' },
-                        { label: 'Condition', data: moodData, type: 'line', borderColor: '#10b981', borderWidth: 2, tension: 0.4, pointRadius: 0, yAxisID: 'y' }
+                        { label: "Caffeine", data: caffeineData, backgroundColor: "rgba(245, 158, 11, 0.2)", borderRadius: 4, yAxisID: "y1" },
+                        { label: "Condition", data: moodData, type: "line", borderColor: "#10b981", borderWidth: 2, tension: 0.4, pointRadius: 0, yAxisID: "y" }
                     ]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
                     scales: {
-                        y: { position: 'left', min: 0, max: 10, ticks: { display: false }, grid: { display: false } },
-                        y1: { position: 'right', min: 0, max: 600, ticks: { display: false }, grid: { display: false } },
-                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: 'bold' } } }
+                        y: { position: "left", min: 0, max: 10, ticks: { display: false }, grid: { display: false } },
+                        y1: { position: "right", min: 0, max: 600, ticks: { display: false }, grid: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: "bold" } } }
                     }
                 }
             });
         }
 
         function toggleModal() {
-            const m = document.getElementById('modal');
-            m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none');
+            const m = document.getElementById("modal");
+            m.classList.toggle("opacity-0");
+            m.classList.toggle("pointer-events-none");
         }
 
         function exportData() {
-            const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = `wellness_log_backup.json`; a.click();
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "wellness_log_backup.json";
+            a.click();
         }
     </script>
 </body>
