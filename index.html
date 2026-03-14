@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wellness Log Pro+ v2.2</title>
+    <title>Wellness Log Pro+ v2.3</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -28,8 +28,8 @@
 
         <header class="bg-slate-900 p-4 text-white flex justify-between items-center sticky top-0 z-50">
             <div>
-                <h1 class="text-lg font-bold flex items-center gap-2">☕ 웰니스 로그 <span class="bg-emerald-500 text-[9px] px-1.5 py-0.5 rounded tracking-tighter text-white">V2.2</span></h1>
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Mind & Body Tracker</p>
+                <h1 class="text-lg font-bold flex items-center gap-2">☕ 웰니스 로그 <span class="bg-emerald-500 text-[9px] px-1.5 py-0.5 rounded tracking-tighter text-white">V2.3</span></h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Caffeine Sensitive Daily Tracker</p>
             </div>
             <div class="flex gap-2">
                 <input type="date" id="targetDate" class="bg-slate-800 border-none rounded-lg px-2 py-1 text-xs font-bold" onchange="loadDailyData()">
@@ -56,6 +56,15 @@
 
         <main class="p-4 space-y-6 flex-1">
             <div id="morningSection" class="space-y-5">
+                <div class="bg-slate-900 text-white rounded-3xl p-5 shadow-xl">
+                    <p class="text-[10px] font-black text-emerald-300 uppercase tracking-[0.24em] mb-2">Why This Exists</p>
+                    <h2 class="text-lg font-black leading-tight mb-2">커피를 끊기 위한 앱이 아니라, 내 몸을 더 잘 이해하기 위한 로그</h2>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        아침 컨디션과 수면 상태, 그리고 하루 중 마신 음료를 함께 남겨서
+                        내가 카페인, 당분, 수면의 질에 어떻게 반응하는지 천천히 읽어내는 것이 이 서비스의 목적입니다.
+                    </p>
+                </div>
+
                 <div class="bg-slate-100 border border-slate-200 rounded-2xl p-4 shadow-inner">
                     <h3 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Yesterday Performance</h3>
                     <div id="yesterdaySummary" class="grid grid-cols-2 gap-3 text-xs text-slate-700 font-bold italic"></div>
@@ -63,6 +72,9 @@
 
                 <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
                     <h3 class="text-xs font-bold text-emerald-800 mb-3 flex items-center gap-1">🎯 오늘의 다짐 (목표 설정)</h3>
+                    <p class="text-[11px] text-emerald-700 leading-relaxed mb-3">
+                        날씨와 어제 컨디션을 참고해서, 오늘은 카페인을 얼마나 허용할지 미리 정해보세요.
+                    </p>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Caffeine Target</label>
@@ -114,6 +126,14 @@
 
                 <textarea id="note" rows="2" class="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm focus:outline-none" placeholder="오늘의 컨디션이나 특이사항을 적어주세요."></textarea>
                 <button onclick="saveMorningData()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl btn-active transition text-lg">아침 리포트 완료 🌅</button>
+
+                <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                    <h3 class="text-[10px] font-black text-amber-700 uppercase tracking-[0.2em] mb-2">Current Scope</h3>
+                    <p class="text-xs text-amber-900 leading-relaxed">
+                        지금은 모든 식단을 다 기록하는 앱이 아니라, 먼저 <strong>수면 / 아침 컨디션 / 카페인 / 당분</strong>에 집중합니다.
+                        점심 메뉴나 술까지 한 번에 다 넣기보다, 정말 내 몸 반응에 중요한 것부터 보는 버전입니다.
+                    </p>
+                </div>
             </div>
 
             <div id="caffeineSection" class="hidden space-y-6">
@@ -185,11 +205,15 @@
             <div id="historyList" class="space-y-3 pb-10"></div>
 
             <div class="mt-10 mb-6 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 text-center shadow-inner">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Voice of User</p>
-                <h4 class="text-sm font-bold text-slate-800 mb-4 leading-tight">사용자님의 웰니스 로그는<br>여러분의 피드백으로 성장합니다!</h4>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Feedback</p>
+                <h4 class="text-sm font-bold text-slate-800 mb-3 leading-tight">이 서비스가 진짜 도움이 되는지,<br>짧은 의견을 남겨주세요.</h4>
+                <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                    불편했던 점, 좋았던 점, 보고 싶은 기능을 짧게 남겨주시면 다음 업데이트에 반영하기 좋습니다.
+                    지금은 간단하게 구글폼으로 받고 있어요.
+                </p>
                 <a href="https://forms.gle/T2bkFKMdgLc5Vh529" target="_blank"
                    class="inline-block bg-slate-900 text-white px-10 py-4 rounded-2xl text-xs font-black shadow-xl btn-active transition hover:bg-emerald-600">
-                    10초만에 의견 남기기 🎤
+                    10초 피드백 남기기 🎤
                 </a>
             </div>
         </main>
@@ -198,11 +222,13 @@
     <div id="modal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-[100] p-4">
         <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onclick="toggleModal()"></div>
         <div class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl z-[101] overflow-hidden flex flex-col p-8 text-center">
-            <h2 class="text-xl font-black text-emerald-600 mb-4 italic">"Data-driven High-Performance."</h2>
+            <h2 class="text-xl font-black text-emerald-600 mb-4 italic">"Know Your Own Pattern."</h2>
             <div class="text-xs text-slate-600 leading-relaxed space-y-3 text-left">
-                <p>✓ <strong>상태만 기록:</strong> 커피를 마시지 않아도 현재의 업다운을 기록해 보세요. 나중에 그래프로 패턴을 분석할 수 있습니다.</p>
-                <p>✓ <strong>당분 추적:</strong> 이제 당분도 g단위로 기록됩니다. '슈거 크래시'를 예방하세요.</p>
-                <p>✓ <strong>실시간 날씨:</strong> 사용자님이 위치한 서울의 날씨에 맞춰 오늘 하루를 계획해 보세요.</p>
+                <p><strong>이 서비스의 목적</strong><br>커피를 무조건 참는 앱이 아니라, 내가 카페인과 당분, 수면에 어떻게 반응하는지 이해하기 위한 기록장입니다.</p>
+                <p><strong>아침 리포트</strong><br>수면 시간, 기분, 워치 데이터, 오늘 목표를 적으면서 어제 무엇이 좋았고 나빴는지 떠올려보세요.</p>
+                <p><strong>음료 기록</strong><br>일반 커피, 디카페인, 차, 무카페인 음료를 나누어 기록하고 당분과 현재 몸 상태도 함께 남길 수 있습니다.</p>
+                <p><strong>현재 범위</strong><br>지금은 모든 식단을 다 추적하지 않고, 먼저 수면과 카페인 반응을 읽는 데 집중합니다.</p>
+                <p><strong>장기 목표</strong><br>기록이 쌓이면, 어떤 날 컨디션이 좋았는지와 어떤 선택이 나와 잘 맞는지 더 긴 흐름으로 볼 수 있습니다.</p>
             </div>
             <button onclick="toggleModal()" class="w-full bg-emerald-600 text-white mt-6 py-4 rounded-xl font-black text-sm">기록 시작하기</button>
         </div>
@@ -352,7 +378,7 @@
                 const data = await res.json();
                 const cur = data.current_condition[0];
                 if (temp) temp.innerText = `${cur.temp_C}°C`;
-                if (desc) desc.innerText = `서울: ${cur.weatherDesc[0].value} | 습도: ${cur.humidity}% | 웰니스 로그를 시작해 보세요!`;
+                if (desc) desc.innerText = `서울: ${cur.weatherDesc[0].value} | 습도: ${cur.humidity}% | 오늘 목표와 카페인 한도를 가볍게 정해보세요.`;
             } catch (e) {
                 if (desc) desc.innerText = "현재 실시간 날씨 정보를 불러올 수 없습니다.";
             }
