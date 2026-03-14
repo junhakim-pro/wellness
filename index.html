@@ -13,6 +13,7 @@
         .selected-item { border-color: #059669 !important; background-color: #ecfdf5 !important; color: #059669 !important; border-width: 2px !important; }
         .progress-bar { transition: width 0.6s ease; }
         .warning-pulse { animation: pulse 1.5s infinite; }
+        .insight-card { background: linear-gradient(135deg, #ecfeff 0%, #ecfdf5 100%); }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
@@ -63,6 +64,12 @@
                         아침 컨디션과 수면 상태, 그리고 하루 중 마신 음료를 함께 남겨서
                         내가 카페인, 당분, 수면의 질에 어떻게 반응하는지 천천히 읽어내는 것이 이 서비스의 목적입니다.
                     </p>
+                </div>
+
+                <div class="insight-card border border-emerald-100 rounded-3xl p-5 shadow-sm">
+                    <p class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.22em] mb-2">Daily Insight</p>
+                    <h3 id="dailyInsightTitle" class="text-sm font-black text-slate-900 mb-2">오늘의 몸 상태를 읽는 중입니다.</h3>
+                    <p id="dailyInsightBody" class="text-xs text-slate-700 leading-relaxed">어제 기록과 오늘 날씨를 참고해서, 아침 목표를 더 현실적으로 잡을 수 있도록 도와드립니다.</p>
                 </div>
 
                 <div class="bg-slate-100 border border-slate-200 rounded-2xl p-4 shadow-inner">
@@ -121,6 +128,33 @@
                         <label class="block text-[10px] font-bold text-blue-400 mb-1 uppercase">Resting HR</label>
                         <input type="number" id="rhr" list="rhrList" class="w-full bg-transparent text-lg font-black text-blue-600 focus:outline-none" placeholder="bpm">
                         <datalist id="rhrList"><option value="48"><option value="58"><option value="68"></datalist>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-violet-50 p-3 rounded-2xl border border-violet-100">
+                        <label class="block text-[10px] font-bold text-violet-500 mb-1 uppercase">Exercise</label>
+                        <select id="exercise" class="w-full bg-transparent text-sm font-black text-violet-700 focus:outline-none border-none">
+                            <option value="none" selected>안 함</option>
+                            <option value="light">가볍게</option>
+                            <option value="hard">강하게</option>
+                        </select>
+                    </div>
+                    <div class="bg-rose-50 p-3 rounded-2xl border border-rose-100">
+                        <label class="block text-[10px] font-bold text-rose-400 mb-1 uppercase">Alcohol</label>
+                        <select id="alcohol" class="w-full bg-transparent text-sm font-black text-rose-700 focus:outline-none border-none">
+                            <option value="none" selected>안 마심</option>
+                            <option value="light">조금</option>
+                            <option value="high">많이</option>
+                        </select>
+                    </div>
+                    <div class="bg-sky-50 p-3 rounded-2xl border border-sky-100">
+                        <label class="block text-[10px] font-bold text-sky-500 mb-1 uppercase">Nap</label>
+                        <select id="nap" class="w-full bg-transparent text-sm font-black text-sky-700 focus:outline-none border-none">
+                            <option value="none" selected>안 잠</option>
+                            <option value="short">짧게</option>
+                            <option value="long">길게</option>
+                        </select>
                     </div>
                 </div>
 
@@ -208,13 +242,18 @@
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Feedback</p>
                 <h4 class="text-sm font-bold text-slate-800 mb-3 leading-tight">이 서비스가 진짜 도움이 되는지,<br>짧은 의견을 남겨주세요.</h4>
                 <p class="text-xs text-slate-500 leading-relaxed mb-4">
-                    불편했던 점, 좋았던 점, 보고 싶은 기능을 짧게 남겨주시면 다음 업데이트에 반영하기 좋습니다.
-                    지금은 간단하게 구글폼으로 받고 있어요.
+                    불편했던 점, 좋았던 점, 보고 싶은 기능을 한 줄로 남겨주시면 다음 업데이트에 반영하기 좋습니다.
                 </p>
-                <a href="https://forms.gle/T2bkFKMdgLc5Vh529" target="_blank"
-                   class="inline-block bg-slate-900 text-white px-10 py-4 rounded-2xl text-xs font-black shadow-xl btn-active transition hover:bg-emerald-600">
-                    10초 피드백 남기기 🎤
-                </a>
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <button onclick="setFeedbackCategory('good', this)" class="feedback-btn bg-white border border-slate-200 py-2 rounded-xl text-[11px] font-bold selected-item">좋았어요</button>
+                    <button onclick="setFeedbackCategory('bug', this)" class="feedback-btn bg-white border border-slate-200 py-2 rounded-xl text-[11px] font-bold">불편했어요</button>
+                    <button onclick="setFeedbackCategory('idea', this)" class="feedback-btn bg-white border border-slate-200 py-2 rounded-xl text-[11px] font-bold">기능 제안</button>
+                </div>
+                <textarea id="feedbackText" rows="2" class="w-full bg-white border border-slate-200 rounded-2xl p-3 text-xs focus:outline-none mb-3" placeholder="한 줄 의견을 남겨주세요."></textarea>
+                <input type="hidden" id="feedbackCategory" value="good">
+                <button onclick="saveFeedback()" class="inline-block bg-slate-900 text-white px-10 py-4 rounded-2xl text-xs font-black shadow-xl btn-active transition hover:bg-emerald-600">
+                    인앱 피드백 남기기 🎤
+                </button>
             </div>
         </main>
     </div>
@@ -268,6 +307,61 @@
             }
 
             return result;
+        }
+
+        function setFeedbackCategory(category, btn) {
+            document.getElementById("feedbackCategory").value = category;
+            document.querySelectorAll(".feedback-btn").forEach(b => b.classList.remove("selected-item"));
+            btn.classList.add("selected-item");
+        }
+
+        function getRuleBasedInsight(dateStr) {
+            const today = allData[dateStr] || {};
+            const yesterday = allData[new Date(new Date(dateStr).setDate(new Date(dateStr).getDate() - 1)).toISOString().split("T")[0]];
+            const dates = Object.keys(allData).sort().slice(-7);
+            const recentLogs = dates.flatMap(d => (allData[d]?.logs || []));
+            const recentCaffeine = recentLogs.reduce((sum, log) => sum + (log.amount || 0), 0);
+            const avgRecentCaffeine = dates.length ? Math.round(recentCaffeine / dates.length) : 0;
+
+            if (today.sleep && today.sleep < 6) {
+                return {
+                    title: "수면이 짧았던 날입니다",
+                    body: "오늘은 컨디션이 흔들릴 수 있으니, 카페인을 빠르게 올리기보다 목표를 낮게 잡고 천천히 반응을 확인해보세요."
+                };
+            }
+
+            if (yesterday?.alcohol === "high") {
+                return {
+                    title: "어제 음주 영향 가능성이 있어요",
+                    body: "오늘 아침 컨디션 저하는 카페인 부족보다 어제 밤의 음주 영향일 수 있습니다. 평소보다 부드럽게 시작해보세요."
+                };
+            }
+
+            if (today.exercise === "hard") {
+                return {
+                    title: "강한 운동 기록이 있는 날입니다",
+                    body: "운동 피로와 카페인 반응이 섞일 수 있으니, 몸 상태와 심박 느낌을 같이 기록해두면 나중에 패턴을 읽기 좋습니다."
+                };
+            }
+
+            if (avgRecentCaffeine >= 180) {
+                return {
+                    title: "최근 카페인 평균이 조금 높아요",
+                    body: `최근 일주일 평균 카페인은 약 ${avgRecentCaffeine}mg입니다. 오늘은 목표를 조금 낮게 잡아 비교해보는 것도 좋겠습니다.`
+                };
+            }
+
+            return {
+                title: "오늘의 기준선을 만드는 날입니다",
+                body: "수면, 기분, 날씨, 첫 음료 반응을 함께 남기면 나중에 어떤 선택이 컨디션을 좋게 만드는지 더 선명하게 보입니다."
+            };
+        }
+
+        function updateDailyInsight() {
+            const dateStr = document.getElementById("targetDate").value;
+            const insight = getRuleBasedInsight(dateStr);
+            document.getElementById("dailyInsightTitle").innerText = insight.title;
+            document.getElementById("dailyInsightBody").innerText = insight.body;
         }
 
         function onTelegramAuth(user) {
@@ -393,9 +487,13 @@
             document.getElementById("sugarGoal").value = d.sugarGoal !== undefined ? d.sugarGoal : 30;
             document.getElementById("sleepScore").value = d.sleepScore || "";
             document.getElementById("rhr").value = d.rhr || "";
+            document.getElementById("exercise").value = d.exercise || "none";
+            document.getElementById("alcohol").value = d.alcohol || "none";
+            document.getElementById("nap").value = d.nap || "none";
             document.getElementById("note").value = d.note || "";
             loadYesterdaySummary(date);
             updateProgressBars();
+            updateDailyInsight();
         }
 
         function loadYesterdaySummary(currentDate) {
@@ -461,6 +559,9 @@
                 sugarGoal: Number(document.getElementById("sugarGoal").value),
                 sleepScore: Number(document.getElementById("sleepScore").value) || 0,
                 rhr: Number(document.getElementById("rhr").value) || 0,
+                exercise: document.getElementById("exercise").value,
+                alcohol: document.getElementById("alcohol").value,
+                nap: document.getElementById("nap").value,
                 note: document.getElementById("note").value
             };
 
@@ -534,6 +635,31 @@
             renderHistory();
             updateProgressBars();
             renderChart();
+        }
+
+        async function saveFeedback() {
+            const text = document.getElementById("feedbackText").value.trim();
+            const category = document.getElementById("feedbackCategory").value;
+
+            if (!text) {
+                alert("한 줄 의견을 적어주세요.");
+                return;
+            }
+
+            try {
+                await syncLogToCloud({
+                    type: "feedback",
+                    timestamp: Date.now(),
+                    text: text,
+                    note: text,
+                    feedbackCategory: category
+                });
+                document.getElementById("feedbackText").value = "";
+                alert("피드백 감사합니다. 다음 업데이트에 큰 도움이 됩니다.");
+            } catch (e) {
+                console.error("피드백 저장 실패:", e);
+                alert("피드백 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+            }
         }
 
         function renderHistory() {
