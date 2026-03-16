@@ -17,6 +17,7 @@
         .collapsed-copy { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .guide-option { transition: transform 0.15s ease, border-color 0.2s ease, background-color 0.2s ease; }
         .guide-option:active { transform: scale(0.98); }
+        .floating-notice { transition: opacity 0.25s ease, transform 0.25s ease; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
@@ -30,8 +31,9 @@
                     data-request-access="write"></script>
         </div>
         <div id="login-benefit-banner" class="bg-amber-50 border-b border-amber-100 px-4 py-3 text-[11px] text-amber-900 leading-relaxed hidden">
-            텔레그램 로그인 시 기록이 클라우드에도 저장되어 새로고침·기기 변경 후에도 이어서 볼 수 있어요.
+            텔레그램 로그인 시 기록이 클라우드에 저장되고, AI 인사이트와 주간 요약도 기기 변경 후 계속 이어집니다.
         </div>
+        <div id="appNotice" class="floating-notice fixed left-1/2 top-4 z-[130] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-2 rounded-2xl px-4 py-3 text-sm font-bold shadow-2xl opacity-0 pointer-events-none"></div>
 
         <header class="bg-slate-900 p-4 text-white flex justify-between items-center sticky top-0 z-50">
             <div>
@@ -75,11 +77,16 @@
                 </div>
                 <div class="space-y-3">
                     <input id="quickCaptureInput" class="w-full rounded-2xl bg-white/10 border border-white/10 px-4 py-4 text-sm text-white placeholder:text-slate-400 focus:outline-none" placeholder="예: 10:30 아메리카노 한잔, 15시 갑자기 두근거림, 디카페인 라떼 마심">
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="applyQuickExample('10:30 아메리카노 한잔')" class="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black text-white/90 btn-active">아메리카노 한잔</button>
+                        <button onclick="applyQuickExample('점심 뒤 콜라 마심')" class="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black text-white/90 btn-active">점심 뒤 콜라</button>
+                        <button onclick="applyQuickExample('15시 갑자기 두근거림')" class="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black text-white/90 btn-active">갑자기 두근거림</button>
+                    </div>
                     <div class="flex gap-2">
                         <button onclick="saveQuickCapture()" class="flex-1 bg-emerald-500 text-slate-950 font-black py-3 rounded-2xl btn-active">빠른 기록 저장</button>
                         <button onclick="switchTab('caffeine')" class="px-4 bg-white/10 text-white font-black py-3 rounded-2xl btn-active">상세 기록</button>
                     </div>
-                    <p id="quickCaptureStatus" class="text-[11px] text-slate-300 leading-relaxed">대충 적어도 괜찮습니다. 지금은 커피, 차, 디카페인, 물, 상태 변화 중심으로 읽습니다.</p>
+                    <p id="quickCaptureStatus" class="text-[11px] text-slate-300 leading-relaxed">예시를 눌러서 시작해도 되고, 자유롭게 적어도 됩니다. 지금은 커피, 차, 디카페인, 콜라, 물, 상태 변화 중심으로 읽습니다.</p>
                 </div>
             </section>
 
@@ -271,10 +278,11 @@
                 <div class="bg-slate-50 border border-slate-200 rounded-3xl p-4 shadow-sm">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">How To Use</p>
                     <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
-                        <p><strong>음료를 마셨다면:</strong> Step 1-2-3을 순서대로 선택하고 <strong>음료+상태 기록</strong>을 눌러주세요.</p>
-                        <p><strong>몇 시간 뒤 컨디션만 변했다면:</strong> 음료를 고르지 않아도 아래 상태만 입력한 뒤 <strong>상태만 기록</strong>을 눌러도 됩니다.</p>
-                        <p><strong>어젯밤 술 영향이 의심되면:</strong> 아래 술 quick log로 남겨두면 오늘 컨디션 해석에 같이 반영됩니다.</p>
+                        <p><strong>지금 음료를 마셨다면:</strong> Step 1-2-3을 고르고 <strong>음료 + 상태 함께 기록</strong>을 눌러주세요.</p>
+                        <p><strong>몇 시간 뒤 갑자기 컨디션이 변했다면:</strong> 음료 선택 없이 Step 3만 적고 <strong>상태 변화만 기록</strong>을 누르면 됩니다.</p>
+                        <p><strong>어젯밤 술 영향이 의심되면:</strong> 아래 술 quick log를 남겨두면 오늘 컨디션 해석에서 카페인보다 회복 요인을 먼저 보게 됩니다.</p>
                     </div>
+                    <p class="text-[11px] text-slate-500 leading-relaxed mt-3">지금 상황에 맞는 흐름 하나만 골라도 충분합니다. 모든 버튼을 다 누를 필요는 없어요.</p>
                 </div>
 
                 <div class="bg-rose-50 border border-rose-100 rounded-3xl p-4 shadow-sm">
@@ -335,9 +343,10 @@
                     <input type="hidden" id="moodValue" value="7">
 
                     <div class="flex gap-2">
-                        <button onclick="saveEntry(true)" class="flex-1 bg-slate-900 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">음료 마신 직후 기록 🥤</button>
-                        <button onclick="saveEntry(false)" class="flex-1 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">몇 시간 뒤 상태만 기록 😊</button>
+                        <button onclick="saveEntry(true)" class="flex-1 bg-slate-900 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">음료 + 상태 함께 기록 🥤</button>
+                        <button onclick="saveEntry(false)" class="flex-1 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">상태 변화만 기록 😊</button>
                     </div>
+                    <p class="text-[11px] text-slate-500 text-center mt-3">왼쪽은 지금 마신 음료까지 남길 때, 오른쪽은 몇 시간 뒤 몸 상태만 남길 때 쓰면 됩니다.</p>
                 </div>
             </div>
 
@@ -364,7 +373,7 @@
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Feedback</p>
                 <h4 class="text-sm font-bold text-slate-800 mb-3 leading-tight">이 서비스가 진짜 도움이 되는지,<br>짧은 의견을 남겨주세요.</h4>
                 <p class="text-xs text-slate-500 leading-relaxed mb-4">
-                    불편했던 점, 좋았던 점, 보고 싶은 기능을 한 줄로 남겨주시면 다음 업데이트에 반영하기 좋습니다.
+                    불편했던 점, 좋았던 점, 보고 싶은 기능을 한 줄로 남겨주시면 다음 업데이트에 반영하기 좋습니다. 로그인 후 남기면 운영자 텔레그램으로도 바로 전달됩니다.
                 </p>
                 <div class="grid grid-cols-3 gap-2 mb-3">
                     <button onclick="setFeedbackCategory('good', this)" class="feedback-btn bg-white border border-slate-200 py-2 rounded-xl text-[11px] font-bold selected-item">좋았어요</button>
@@ -472,11 +481,34 @@
             banner.classList.toggle("hidden", isLoggedIn());
         }
 
+        let noticeTimer = null;
+
+        function showAppNotice(message, tone = "info") {
+            const notice = document.getElementById("appNotice");
+            if (!notice) return;
+            const toneClasses = {
+                success: "bg-emerald-600 text-white",
+                info: "bg-slate-900 text-white",
+                warn: "bg-amber-100 text-amber-900 border border-amber-200",
+                error: "bg-rose-600 text-white"
+            };
+
+            notice.className = `floating-notice fixed left-1/2 top-4 z-[130] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-2xl px-4 py-3 text-sm font-bold shadow-2xl ${toneClasses[tone] || toneClasses.info}`;
+            notice.innerText = message;
+            notice.classList.remove("opacity-0", "-translate-y-2", "pointer-events-none");
+
+            if (noticeTimer) clearTimeout(noticeTimer);
+            noticeTimer = window.setTimeout(() => {
+                notice.classList.add("opacity-0", "-translate-y-2", "pointer-events-none");
+            }, 3200);
+        }
+
         function showLoginBenefitPrompt() {
             const key = "login_benefit_prompt_seen";
-            if (localStorage.getItem(key) === "1") return;
+            if (localStorage.getItem(key) === "1") return false;
             localStorage.setItem(key, "1");
-            alert("지금은 이 기기 안에만 저장됩니다.\n텔레그램 로그인하면 기록이 클라우드에도 저장되어 다른 기기에서도 이어서 볼 수 있어요.");
+            showAppNotice("지금은 이 기기에만 저장됐어요. 텔레그램 로그인하면 클라우드 저장은 물론 AI 인사이트와 주간 요약도 더 정확하게 이어집니다.", "warn");
+            return true;
         }
 
         function ensureDateEntry(date) {
@@ -541,7 +573,6 @@
 
         function parseQuickCapture(text) {
             const normalized = text.trim();
-            const lower = normalized.toLowerCase();
             let amount = 0;
             let sugar = 0;
             let name = "빠른 기록";
@@ -558,6 +589,16 @@
             } else if (/디카페인/.test(normalized)) {
                 amount = 15;
                 name = "빠른 기록 · 디카페인";
+                isIntake = true;
+            } else if (/에너지|레드불|몬스터/.test(normalized)) {
+                amount = 120;
+                sugar = 15;
+                name = "빠른 기록 · 에너지음료";
+                isIntake = true;
+            } else if (/콜라/.test(normalized)) {
+                amount = 35;
+                sugar = 10;
+                name = "빠른 기록 · 콜라";
                 isIntake = true;
             } else if (/물|무카페인/.test(normalized)) {
                 amount = 0;
@@ -588,6 +629,24 @@
                 name,
                 note: normalized
             };
+        }
+
+        function applyQuickExample(text) {
+            document.getElementById("quickCaptureInput").value = text;
+            document.getElementById("quickCaptureInput").focus();
+        }
+
+        function describeQuickCapture(parsed) {
+            const typeLabel = parsed.name.replace("빠른 기록 · ", "");
+            const parts = [typeLabel];
+            if (parsed.isIntake) {
+                parts.push(`카페인 ${parsed.amount}mg`);
+                parts.push(`당분 ${parsed.sugar}g`);
+            } else {
+                parts.push("상태 변화 중심");
+            }
+            parts.push(`상태 ${parsed.mood}pt`);
+            return parts.join(" · ");
         }
 
         async function syncLogToCloud(payload) {
@@ -644,14 +703,21 @@
 
             input.value = "";
             status.innerText = parsed.isIntake
-                ? "빠른 음료 기록으로 저장했어요. 필요하면 아래 타임라인에서 다시 확인해보세요."
-                : "빠른 상태 기록으로 저장했어요. 몇 시간 뒤 변화까지 이어서 남겨보면 패턴이 더 잘 보입니다.";
+                ? `${describeQuickCapture(parsed)}로 읽고 저장했어요. 필요하면 기록/분석 탭에서 세부 기록으로 이어가보세요.`
+                : `${describeQuickCapture(parsed)}로 읽고 저장했어요. 몇 시간 뒤 변화를 한 번 더 남기면 패턴이 더 잘 보입니다.`;
         }
 
         function setFeedbackCategory(category, btn) {
             document.getElementById("feedbackCategory").value = category;
             document.querySelectorAll(".feedback-btn").forEach(b => b.classList.remove("selected-item"));
             btn.classList.add("selected-item");
+        }
+
+        function formatDisplayValue(value, suffix = "", fallback = "기록 없음") {
+            if (value === null || value === undefined || value === "" || value === 0) {
+                return fallback;
+            }
+            return `${value}${suffix}`;
         }
 
         function toggleMorningAdvanced(forceOpen) {
@@ -940,10 +1006,15 @@
                     note: entry.note
                 });
                 if (syncResult.skipped) {
-                    showLoginBenefitPrompt();
+                    if (!showLoginBenefitPrompt()) {
+                        showAppNotice("술 영향 기록은 이 기기에 저장됐어요. 로그인하면 클라우드 히스토리와 다음날 해석에도 더 안정적으로 반영됩니다.", "info");
+                    }
+                } else {
+                    showAppNotice("어젯밤 술 영향 기록을 클라우드에 저장했어요.", "success");
                 }
             } catch (e) {
                 console.error("술 quick log 저장 실패:", e);
+                showAppNotice("술 영향 기록은 남겼지만 클라우드 저장은 실패했어요.", "error");
             }
 
             document.getElementById("alcoholQuickLogStatus").innerText = `${labelMap[level]}으로 기록했어요. 오늘 컨디션은 카페인보다 회복 영향일 수도 있다는 힌트를 남겨둘게요.`;
@@ -1057,7 +1128,7 @@
             console.log("로그인 성공!", user);
             localStorage.setItem("telegram_user_id", user.id);
             localStorage.setItem("telegram_user_name", user.first_name);
-            alert(`${user.first_name}님, 환영합니다!`);
+            sessionStorage.setItem("wellness_welcome_notice", `${user.first_name}님, 이제 기록이 클라우드와 AI 인사이트에 연결됩니다.`);
             location.reload();
         }
 
@@ -1081,6 +1152,12 @@
 
             if (!localStorage.getItem("wellness_tutorial_seen")) {
                 toggleModal(true);
+            }
+
+            const welcomeNotice = sessionStorage.getItem("wellness_welcome_notice");
+            if (welcomeNotice) {
+                showAppNotice(welcomeNotice, "success");
+                sessionStorage.removeItem("wellness_welcome_notice");
             }
         };
 
@@ -1227,10 +1304,10 @@
             const totalC = yd.logs ? yd.logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0) : 0;
             const totalS = yd.logs ? yd.logs.reduce((s, l) => s + (l.sugar > 0 ? l.sugar : 0), 0) : 0;
             div.innerHTML = `
-                <div>SLEEP: ${yd.sleep}h (${yd.sleepScore || "-"}pt)</div>
+                <div>SLEEP: ${formatDisplayValue(yd.sleep, "h")} / SCORE: ${formatDisplayValue(yd.sleepScore, "pt", "-")}</div>
                 <div>CAFF: ${totalC}mg / SUGAR: ${totalS}g</div>
-                <div>RHR: ${yd.rhr || "-"}bpm</div>
-                <div>MOOD: <span class="text-emerald-600">${yd.mood}/10</span></div>
+                <div>RHR: ${formatDisplayValue(yd.rhr, "bpm")}</div>
+                <div>MOOD: <span class="text-emerald-600">${yd.mood ? `${yd.mood}/10` : "기록 없음"}</span></div>
             `;
         }
 
@@ -1302,14 +1379,15 @@
                     ...morningPayload
                 });
                 if (syncResult.skipped) {
-                    showLoginBenefitPrompt();
-                    alert("저장되었습니다. 현재는 이 기기에만 저장됐어요.");
+                    if (!showLoginBenefitPrompt()) {
+                        showAppNotice("아침 리포트가 이 기기에 저장됐어요. 로그인하면 클라우드와 AI 요약까지 이어집니다.", "info");
+                    }
                 } else {
-                    alert("저장되었습니다. 아침 리포트가 서버에도 저장됐어요.");
+                    showAppNotice("아침 리포트와 오늘 목표를 클라우드에 저장했어요.", "success");
                 }
             } catch (e) {
                 console.error("아침 리포트 서버 저장 실패:", e);
-                alert("기기에는 저장됐지만 서버 저장은 실패했습니다.");
+                showAppNotice("기기에는 저장됐지만 클라우드 저장은 실패했어요.", "error");
             }
 
             loadDailyData();
@@ -1348,11 +1426,15 @@
                     note: note
                 });
                 if (syncResult.skipped) {
-                    showLoginBenefitPrompt();
+                    if (!showLoginBenefitPrompt()) {
+                        showAppNotice(isIntake ? "음료 기록은 이 기기에 저장됐어요. 로그인하면 클라우드와 AI 흐름 해석까지 이어집니다." : "상태 변화 기록은 이 기기에 저장됐어요. 로그인하면 클라우드 히스토리로 이어집니다.", "info");
+                    }
+                } else {
+                    showAppNotice(isIntake ? "음료 + 상태 기록을 클라우드에 저장했어요." : "상태 변화 기록을 클라우드에 저장했어요.", "success");
                 }
             } catch (e) {
                 console.error("기록 서버 저장 실패:", e);
-                alert("기기에는 저장됐지만 서버 저장은 실패했습니다.");
+                showAppNotice("기기에는 저장됐지만 클라우드 저장은 실패했어요.", "error");
             }
 
             document.getElementById("moodNote").value = "";
@@ -1369,6 +1451,7 @@
             renderHistory();
             updateProgressBars();
             renderChart();
+            showAppNotice("기록을 이 기기에서 삭제했어요. 클라우드 삭제 연동은 다음 단계에서 붙일 수 있습니다.", "info");
         }
 
         async function saveFeedback() {
@@ -1376,7 +1459,7 @@
             const category = document.getElementById("feedbackCategory").value;
 
             if (!text) {
-                alert("한 줄 의견을 적어주세요.");
+                showAppNotice("한 줄 의견을 적어주세요.", "warn");
                 return;
             }
 
@@ -1389,15 +1472,16 @@
                     feedbackCategory: category
                 });
                 if (syncResult.skipped) {
-                    showLoginBenefitPrompt();
-                    alert("피드백은 이 기기에서만 임시 저장됩니다. 로그인 후 보내면 운영자에게 전달돼요.");
+                    if (!showLoginBenefitPrompt()) {
+                        showAppNotice("로그인 후 피드백을 남기면 운영자 텔레그램으로 바로 전달돼요.", "warn");
+                    }
                     return;
                 }
                 document.getElementById("feedbackText").value = "";
-                alert("피드백 감사합니다. 다음 업데이트에 큰 도움이 됩니다.");
+                showAppNotice("피드백 감사합니다. 운영자에게 바로 전달됐어요.", "success");
             } catch (e) {
                 console.error("피드백 저장 실패:", e);
-                alert("피드백 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+                showAppNotice("피드백 저장에 실패했습니다. 잠시 후 다시 시도해주세요.", "error");
             }
         }
 
@@ -1424,7 +1508,8 @@
                         ${l.note ? `<p class="text-slate-400 italic font-medium leading-tight">"${l.note}"</p>` : ""}
                     </div>
                 `).join("");
-                div.innerHTML = `<div class="flex justify-between items-center"><span class="text-[9px] font-black text-slate-400 uppercase">${date}</span><span class="text-xs font-black text-emerald-600">${d.mood} Morning pt</span></div><div class="space-y-1.5">${logsHtml || '<p class="text-[10px] text-slate-300 italic px-2 py-1">기록 없음</p>'}</div>`;
+                const morningHeadline = d.mood ? `${d.mood}/10 Morning` : "아침 기록 없음";
+                div.innerHTML = `<div class="flex justify-between items-center"><span class="text-[9px] font-black text-slate-400 uppercase">${date}</span><span class="text-xs font-black text-emerald-600">${morningHeadline}</span></div><div class="space-y-1.5">${logsHtml || '<p class="text-[10px] text-slate-300 italic px-2 py-1">기록 없음</p>'}</div>`;
                 list.appendChild(div);
             });
         }
