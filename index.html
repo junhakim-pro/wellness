@@ -273,7 +273,26 @@
                     <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
                         <p><strong>음료를 마셨다면:</strong> Step 1-2-3을 순서대로 선택하고 <strong>음료+상태 기록</strong>을 눌러주세요.</p>
                         <p><strong>몇 시간 뒤 컨디션만 변했다면:</strong> 음료를 고르지 않아도 아래 상태만 입력한 뒤 <strong>상태만 기록</strong>을 눌러도 됩니다.</p>
+                        <p><strong>어젯밤 술 영향이 의심되면:</strong> 아래 술 quick log로 남겨두면 오늘 컨디션 해석에 같이 반영됩니다.</p>
                     </div>
+                </div>
+
+                <div class="bg-rose-50 border border-rose-100 rounded-3xl p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <div>
+                            <p class="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">Recovery Factor</p>
+                            <h3 class="text-sm font-black text-slate-900 mt-1">어젯밤 술 영향 quick log</h3>
+                        </div>
+                        <span class="text-[10px] font-black px-2 py-1 rounded-full bg-white text-rose-500 border border-rose-100">NEXT-DAY</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-3">술은 오늘 마신 음료보다, 다음날 회복과 예민함에 남는 영향으로 해석하는 편이 더 정확합니다.</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="saveAlcoholQuickLog('light')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-rose-700 btn-active">어젯밤 1잔</button>
+                        <button onclick="saveAlcoholQuickLog('medium')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-rose-700 btn-active">어젯밤 2-3잔</button>
+                        <button onclick="saveAlcoholQuickLog('high')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-rose-700 btn-active">어젯밤 많이 마심</button>
+                        <button onclick="saveAlcoholQuickLog('none')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-slate-600 btn-active">술 영향 없음</button>
+                    </div>
+                    <p id="alcoholQuickLogStatus" class="text-[11px] text-slate-500 leading-relaxed mt-3">컨디션이 안 좋은데 카페인 때문인지 헷갈릴 때 빠르게 남겨두면 도움이 됩니다.</p>
                 </div>
 
                 <div class="space-y-6">
@@ -424,6 +443,18 @@
                     { value: "30", label: "보통 수준", note: "기본 추천" },
                     { value: "50", label: "여유 있게", note: "간식 포함" }
                 ]
+            },
+            {
+                key: "quickAlcoholImpact",
+                question: "어젯밤 술 영향은 어땠나요?",
+                helper: "잠이 안 좋았던 날만 체크해도 충분합니다.",
+                condition: (answers) => ["poor", "bad"].includes(answers.quickSleepQuality),
+                options: [
+                    { value: "none", label: "술은 없었어요", note: "카페인 쪽 원인 먼저 보기" },
+                    { value: "light", label: "1잔 정도", note: "가벼운 영향 가능성" },
+                    { value: "medium", label: "2-3잔", note: "회복 영향 가능성" },
+                    { value: "high", label: "많이 마셨어요", note: "오늘 컨디션 해석에 우선 반영" }
+                ]
             }
         ];
 
@@ -459,7 +490,8 @@
                 quickSleepQuality: d.quickSleepQuality || "",
                 quickSleepBand: d.quickSleepBand || "",
                 quickCaffeinePlan: d.quickCaffeinePlan || "",
-                quickSugarPlan: d.quickSugarPlan || ""
+                quickSugarPlan: d.quickSugarPlan || "",
+                quickAlcoholImpact: d.quickAlcoholImpact || ""
             };
         }
 
@@ -649,6 +681,11 @@
                 document.getElementById("sugarGoal").value = value;
             }
 
+            if (stepKey === "quickAlcoholImpact") {
+                const alcoholMap = { none: "none", light: "light", medium: "light", high: "high" };
+                document.getElementById("alcohol").value = alcoholMap[value] || "none";
+            }
+
             persistLocalData();
             renderMorningGuide();
             updateProgressBars();
@@ -662,6 +699,7 @@
             delete d.quickSleepBand;
             delete d.quickCaffeinePlan;
             delete d.quickSugarPlan;
+            delete d.quickAlcoholImpact;
             persistLocalData();
             renderMorningGuide();
         }
@@ -669,16 +707,17 @@
         function renderMorningGuide() {
             const date = document.getElementById("targetDate").value;
             const answers = getMorningGuideAnswers(date);
-            const completed = Object.values(answers).filter(Boolean).length;
+            const activeSteps = MORNING_GUIDE_STEPS.filter((step) => !step.condition || step.condition(answers));
+            const completed = activeSteps.filter((step) => answers[step.key]).length;
             const progress = document.getElementById("morningGuideProgress");
             const question = document.getElementById("morningGuideQuestion");
             const helper = document.getElementById("morningGuideHelper");
             const options = document.getElementById("morningGuideOptions");
             const summary = document.getElementById("morningGuideSummary");
 
-            progress.innerText = `${completed} / ${MORNING_GUIDE_STEPS.length}`;
+            progress.innerText = `${completed} / ${activeSteps.length}`;
 
-            const nextStep = MORNING_GUIDE_STEPS.find((step) => !answers[step.key]);
+            const nextStep = activeSteps.find((step) => !answers[step.key]);
 
             if (!nextStep) {
                 question.innerText = "좋아요, 아침 체크인이 거의 끝났어요";
@@ -688,7 +727,8 @@
                         <div class="text-sm font-black text-slate-900">오늘 계획 요약</div>
                         <div class="text-xs text-slate-600 leading-relaxed mt-2">
                             수면 감각: ${answers.quickSleepQuality || "-"} · 수면 구간: ${answers.quickSleepBand || "-"}<br>
-                            카페인 목표: ${document.getElementById("caffeineGoal").value}mg · 당류 목표: ${document.getElementById("sugarGoal").value}g
+                            카페인 목표: ${document.getElementById("caffeineGoal").value}mg · 당류 목표: ${document.getElementById("sugarGoal").value}g<br>
+                            술 영향: ${answers.quickAlcoholImpact || "기록 없음"}
                         </div>
                     </div>
                 `;
@@ -832,6 +872,61 @@
                     <div class="text-xl font-black text-slate-900 mt-2">${card.value}</div>
                 </article>
             `).join("");
+        }
+
+        async function saveAlcoholQuickLog(level) {
+            const date = document.getElementById("targetDate").value;
+            const d = ensureDateEntry(date);
+            const labelMap = {
+                none: "술 영향 없음",
+                light: "어젯밤 술 1잔",
+                medium: "어젯밤 술 2-3잔",
+                high: "어젯밤 술 많이 마심"
+            };
+            const noteMap = {
+                none: "오늘 컨디션 해석에서 술 영향은 크지 않은 날",
+                light: "어젯밤 1잔 정도로 오늘 회복 영향 가능성 체크",
+                medium: "어젯밤 2-3잔으로 오늘 예민함과 회복 영향 가능성",
+                high: "어젯밤 음주가 커서 오늘 컨디션 저하 해석에 우선 반영"
+            };
+
+            d.alcohol = level === "medium" ? "light" : level;
+            d.quickAlcoholImpact = level;
+            if (!d.logs) d.logs = [];
+
+            const entry = {
+                id: Date.now(),
+                time: new Date().toTimeString().slice(0, 5),
+                amount: 0,
+                sugar: 0,
+                name: labelMap[level],
+                mood: level === "none" ? 7 : 4,
+                note: noteMap[level]
+            };
+            d.logs.push(entry);
+            persistLocalData();
+
+            try {
+                const syncResult = await syncLogToCloud({
+                    type: "entry",
+                    timestamp: entry.id,
+                    text: entry.name,
+                    caffeine: 0,
+                    sugar: 0,
+                    mood: entry.mood,
+                    note: entry.note
+                });
+                if (syncResult.skipped) {
+                    showLoginBenefitPrompt();
+                }
+            } catch (e) {
+                console.error("술 quick log 저장 실패:", e);
+            }
+
+            document.getElementById("alcoholQuickLogStatus").innerText = `${labelMap[level]}으로 기록했어요. 오늘 컨디션은 카페인보다 회복 영향일 수도 있다는 힌트를 남겨둘게요.`;
+            loadDailyData();
+            renderHistory();
+            renderChart();
         }
 
         function setWeeklyFallbackInsight() {
