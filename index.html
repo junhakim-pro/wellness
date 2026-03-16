@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wellness Log Pro+ v2.3</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #f8fafc; }
+        .btn-active:active { transform: scale(0.96); }
+        .tab-active { background-color: #059669 !important; color: white !important; }
+        .selected-item { border-color: #059669 !important; background-color: #ecfdf5 !important; color: #059669 !important; border-width: 2px !important; }
+        .progress-bar { transition: width 0.6s ease; }
+        .warning-pulse { animation: pulse 1.5s infinite; }
+        .insight-card { background: linear-gradient(135deg, #ecfeff 0%, #ecfdf5 100%); }
+        .collapsed-copy { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body class="text-slate-900 pb-10">
+    <div class="max-w-md mx-auto min-h-screen bg-white shadow-2xl relative flex flex-col">
+        <div id="login-container" class="bg-slate-50 p-4 border-b flex justify-center">
+            <script async src="https://telegram.org/js/telegram-widget.js?22"
+                    data-telegram-login="wellnesslog28_bot"
+                    data-size="medium"
+                    data-onauth="onTelegramAuth(user)"
+                    data-request-access="write"></script>
+        </div>
+        <div id="login-benefit-banner" class="bg-amber-50 border-b border-amber-100 px-4 py-3 text-[11px] text-amber-900 leading-relaxed hidden">
+            텔레그램 로그인 시 기록이 기기 밖에도 저장되어 새로고침·기기 변경 후에도 이어서 볼 수 있어요.
+        </div>
+
+        <header class="bg-slate-900 p-4 text-white flex justify-between items-center sticky top-0 z-50">
+            <div>
+                <h1 class="text-lg font-bold flex items-center gap-2">☕ 웰니스 로그 <span class="bg-emerald-500 text-[9px] px-1.5 py-0.5 rounded tracking-tighter text-white">V2.3</span></h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Caffeine Sensitive Daily Tracker</p>
+            </div>
+            <div class="flex gap-2">
+                <input type="date" id="targetDate" class="bg-slate-800 border-none rounded-lg px-2 py-1 text-xs font-bold" onchange="loadDailyData()">
+                <button onclick="toggleModal()" class="w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full text-sm">ℹ️</button>
+            </div>
+        </header>
+
+        <div id="weather-banner" class="bg-gradient-to-r from-blue-600 to-emerald-500 p-4 text-white shadow-md">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 id="weather-greet" class="text-sm font-bold italic">데이터 로딩 중...</h2>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span id="weatherSourceBadge" class="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-white/20 tracking-[0.16em]">RULE</span>
+                        <p id="weather-desc" class="text-[11px] opacity-90 tracking-tight">서울 날씨와 정보를 확인하고 있습니다.</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span id="temp-display" class="text-2xl font-black">--°C</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="flex p-2 gap-2 bg-slate-50 border-b sticky top-[64px] z-40">
+            <button onclick="switchTab('morning')" id="tabMorning" class="flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active">🌅 리포트/목표</button>
+            <button onclick="switchTab('caffeine')" id="tabCaffeine" class="flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active">📊 기록/분석</button>
+        </nav>
+
+        <main class="p-4 space-y-6 flex-1">
+            <section class="bg-slate-900 text-white rounded-[2rem] p-5 shadow-2xl">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <div>
+                        <p class="text-[10px] font-black text-emerald-300 uppercase tracking-[0.24em]">Quick Capture</p>
+                        <h2 class="text-lg font-black leading-tight mt-1">메신저처럼 한 줄로 바로 기록</h2>
+                    </div>
+                    <span class="text-[10px] font-black px-2 py-1 rounded-full bg-white/10">MVP</span>
+                </div>
+                <div class="space-y-3">
+                    <input id="quickCaptureInput" class="w-full rounded-2xl bg-white/10 border border-white/10 px-4 py-4 text-sm text-white placeholder:text-slate-400 focus:outline-none" placeholder="예: 10:30 아메리카노 한잔, 15시 갑자기 두근거림, 디카페인 라떼 마심">
+                    <div class="flex gap-2">
+                        <button onclick="saveQuickCapture()" class="flex-1 bg-emerald-500 text-slate-950 font-black py-3 rounded-2xl btn-active">빠른 기록 저장</button>
+                        <button onclick="switchTab('caffeine')" class="px-4 bg-white/10 text-white font-black py-3 rounded-2xl btn-active">상세 기록</button>
+                    </div>
+                    <p id="quickCaptureStatus" class="text-[11px] text-slate-300 leading-relaxed">대충 적어도 괜찮습니다. 지금은 커피, 차, 디카페인, 물, 상태 변화 중심으로 읽습니다.</p>
+                </div>
+            </section>
+
+            <section>
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.24em]">Overview</p>
+                        <h2 class="text-lg font-black text-slate-900 mt-1">오늘 흐름을 한눈에 보는 대시보드</h2>
+                    </div>
+                    <span class="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">실시간</span>
+                </div>
+                <div id="overviewCards" class="grid grid-cols-2 gap-3"></div>
+            </section>
+
+            <div id="morningSection" class="space-y-5">
+                <div class="bg-slate-900 text-white rounded-3xl p-5 shadow-xl">
+                    <p class="text-[10px] font-black text-emerald-300 uppercase tracking-[0.24em] mb-2">Why This Exists</p>
+                    <h2 class="text-base font-black leading-tight mb-2">내 몸 반응을 읽기 위한 카페인 로그</h2>
+                    <p id="whyCopy" class="text-xs text-slate-300 leading-relaxed collapsed-copy">
+                        아침 컨디션과 수면 상태, 그리고 하루 중 마신 음료를 함께 남겨서
+                        내가 카페인, 당분, 수면의 질에 어떻게 반응하는지 천천히 읽어내는 것이 이 서비스의 목적입니다.
+                    </p>
+                    <button id="whyToggle" onclick="toggleWhyCard()" class="mt-3 text-[11px] font-black text-emerald-300">더 보기</button>
+                </div>
+
+                <div class="insight-card border border-emerald-100 rounded-3xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <p class="text-[10px] font-black text-emerald-700 uppercase tracking-[0.22em]">Daily Insight</p>
+                        <span id="insightSourceBadge" class="text-[10px] font-black px-2 py-1 rounded-full bg-white text-emerald-700 border border-emerald-100">RULE</span>
+                    </div>
+                    <h3 id="dailyInsightTitle" class="text-sm font-black text-slate-900 mb-2">오늘의 몸 상태를 읽는 중입니다.</h3>
+                    <p id="dailyInsightBody" class="text-xs text-slate-700 leading-relaxed">어제 기록과 오늘 날씨를 참고해서, 아침 목표를 더 현실적으로 잡을 수 있도록 도와드립니다.</p>
+                </div>
+
+                <div class="bg-slate-100 border border-slate-200 rounded-2xl p-4 shadow-inner">
+                    <h3 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Yesterday Performance</h3>
+                    <div id="yesterdaySummary" class="grid grid-cols-2 gap-3 text-xs text-slate-700 font-bold italic"></div>
+                </div>
+
+                <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                    <h3 class="text-xs font-bold text-emerald-800 mb-3 flex items-center gap-1">🎯 오늘의 다짐 (목표 설정)</h3>
+                    <p class="text-[11px] text-emerald-700 leading-relaxed mb-3">
+                        날씨와 어제 컨디션을 참고해서, 오늘은 카페인을 얼마나 허용할지 미리 정해보세요.
+                    </p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Caffeine Target</label>
+                            <select id="caffeineGoal" class="w-full bg-white border border-emerald-200 rounded-xl p-2.5 text-xs font-bold shadow-sm focus:outline-none">
+                                <option value="0">커피 안 마시기 (0mg)</option>
+                                <option value="150" selected>커피 1잔 (150mg)</option>
+                                <option value="300">커피 2잔 (300mg)</option>
+                                <option value="450">최대 한도 (450mg)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Sugar Target</label>
+                            <select id="sugarGoal" class="w-full bg-white border border-emerald-200 rounded-xl p-2.5 text-xs font-bold shadow-sm focus:outline-none">
+                                <option value="0">무설탕 (0g)</option>
+                                <option value="15">가볍게 (15g)</option>
+                                <option value="30" selected>보통 (30g)</option>
+                                <option value="50">고당분 허용 (50g)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Sleep Time</label>
+                        <select id="sleep" class="w-full bg-transparent text-lg font-black text-emerald-600 focus:outline-none border-none">
+                            <option value="6">6.0h</option><option value="7" selected>7.0h</option>
+                            <option value="7.5">7.5h</option><option value="8">8.0h</option>
+                        </select>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Morning Mood</label>
+                        <input type="number" id="mood" class="w-full bg-transparent text-lg font-black text-emerald-600 focus:outline-none" placeholder="1-10">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-blue-50/50 p-3 rounded-2xl border border-blue-100">
+                        <label class="block text-[10px] font-bold text-blue-400 mb-1 uppercase">Sleep Score</label>
+                        <input type="number" id="sleepScore" list="sleepScoreList" class="w-full bg-transparent text-lg font-black text-blue-600 focus:outline-none" placeholder="0-100">
+                        <datalist id="sleepScoreList"><option value="95"><option value="80"><option value="60"></datalist>
+                    </div>
+                    <div class="bg-blue-50/50 p-3 rounded-2xl border border-blue-100">
+                        <label class="block text-[10px] font-bold text-blue-400 mb-1 uppercase">Resting HR</label>
+                        <input type="number" id="rhr" list="rhrList" class="w-full bg-transparent text-lg font-black text-blue-600 focus:outline-none" placeholder="bpm">
+                        <datalist id="rhrList"><option value="48"><option value="58"><option value="68"></datalist>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-violet-50 p-3 rounded-2xl border border-violet-100">
+                        <label class="block text-[10px] font-bold text-violet-500 mb-1 uppercase">Exercise</label>
+                        <select id="exercise" class="w-full bg-transparent text-sm font-black text-violet-700 focus:outline-none border-none">
+                            <option value="none" selected>안 함</option>
+                            <option value="light">가볍게</option>
+                            <option value="hard">강하게</option>
+                        </select>
+                    </div>
+                    <div class="bg-rose-50 p-3 rounded-2xl border border-rose-100">
+                        <label class="block text-[10px] font-bold text-rose-400 mb-1 uppercase">Alcohol</label>
+                        <select id="alcohol" class="w-full bg-transparent text-sm font-black text-rose-700 focus:outline-none border-none">
+                            <option value="none" selected>안 마심</option>
+                            <option value="light">조금</option>
+                            <option value="high">많이</option>
+                        </select>
+                    </div>
+                    <div class="bg-sky-50 p-3 rounded-2xl border border-sky-100">
+                        <label class="block text-[10px] font-bold text-sky-500 mb-1 uppercase">Nap</label>
+                        <select id="nap" class="w-full bg-transparent text-sm font-black text-sky-700 focus:outline-none border-none">
+                            <option value="none" selected>안 잠</option>
+                            <option value="short">짧게</option>
+                            <option value="long">길게</option>
+                        </select>
+                    </div>
+                </div>
+
+                <textarea id="note" rows="2" class="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm focus:outline-none" placeholder="오늘의 컨디션이나 특이사항을 적어주세요."></textarea>
+                <button onclick="saveMorningData()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl btn-active transition text-base">아침 컨디션 기록 · 금일 목표 설정 완료 🌅</button>
+
+                <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                    <h3 class="text-[10px] font-black text-amber-700 uppercase tracking-[0.2em] mb-2">Current Scope</h3>
+                    <p class="text-xs text-amber-900 leading-relaxed">
+                        지금은 모든 식단을 다 기록하는 앱이 아니라, 먼저 <strong>수면 / 아침 컨디션 / 카페인 / 당분</strong>에 집중합니다.
+                        점심 메뉴나 술까지 한 번에 다 넣기보다, 정말 내 몸 반응에 중요한 것부터 보는 버전입니다.
+                    </p>
+                </div>
+            </div>
+
+            <div id="caffeineSection" class="hidden space-y-6">
+                <div class="bg-white border border-slate-200 rounded-[2rem] p-5 shadow-sm">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.22em]">Today Timeline</p>
+                            <h3 class="text-base font-black text-slate-900 mt-1">오늘 몸 반응 흐름</h3>
+                        </div>
+                        <span id="todayTimelineCount" class="text-[10px] font-black px-2 py-1 rounded-full bg-slate-100 text-slate-600">0건</span>
+                    </div>
+                    <div id="todayTimelineList" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-slate-900 rounded-3xl p-5 text-white shadow-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-[10px] font-black text-slate-400 tracking-widest uppercase">Live Status</h3>
+                        <span id="warningLabel" class="hidden text-[10px] bg-red-600 px-2 py-0.5 rounded warning-pulse font-bold">OVER LIMIT</span>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs mb-2"><span>☕ 카페인</span><span id="caffeineProgressText" class="font-black text-amber-400 italic">0 / 150 mg</span></div>
+                            <div class="w-full bg-slate-800 rounded-full h-1.5"><div id="caffeineProgressBar" class="bg-amber-400 h-full rounded-full progress-bar" style="width: 0%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-2"><span>🍬 당분</span><span id="sugarProgressText" class="font-black text-pink-400 italic">0 / 30 g</span></div>
+                            <div class="w-full bg-slate-800 rounded-full h-1.5"><div id="sugarProgressBar" class="bg-pink-400 h-full rounded-full progress-bar" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 rounded-3xl p-4 shadow-sm">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">How To Use</p>
+                    <div class="space-y-2 text-xs text-slate-700 leading-relaxed">
+                        <p><strong>음료를 마셨다면:</strong> Step 1-2-3을 순서대로 선택하고 <strong>음료+상태 기록</strong>을 눌러주세요.</p>
+                        <p><strong>몇 시간 뒤 컨디션만 변했다면:</strong> 음료를 고르지 않아도 아래 상태만 입력한 뒤 <strong>상태만 기록</strong>을 눌러도 됩니다.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 tracking-widest text-center">Step 1. Drink Category</label>
+                        <p class="text-[11px] text-slate-500 text-center mb-3">음료를 마셨을 때만 선택하세요. 상태만 기록할 때는 건너뛰어도 됩니다.</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="setDrink(150, '일반 커피', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition">☕ 일반 커피 (High)</button>
+                            <button onclick="setDrink(40, '차 / 음료', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition">🍵 차 / 차음료 (Mid)</button>
+                            <button onclick="setDrink(15, '디카페인', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition">🥛 디카페인 (Low)</button>
+                            <button onclick="setDrink(0, '물 / 무카페인', this)" class="drink-btn bg-white border-2 border-slate-100 p-3 rounded-2xl text-xs font-bold transition text-blue-500 font-black">💧 물 / No Caffeine</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest text-center">Step 2. Sugar Level</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button onclick="setSugar(25, '🚨 상', this)" class="sugar-btn bg-white border-2 border-slate-100 py-3 rounded-xl text-[10px] font-bold">25g</button>
+                            <button onclick="setSugar(10, '🟡 중', this)" class="sugar-btn bg-white border-2 border-slate-100 py-3 rounded-xl text-[10px] font-bold">10g</button>
+                            <button onclick="setSugar(5, '🟢 하', this)" class="sugar-btn bg-white border-2 border-slate-100 py-3 rounded-xl text-[10px] font-bold">5g</button>
+                            <button onclick="setSugar(0, 'X 없음', this)" class="sugar-btn bg-white border-2 border-slate-100 py-3 rounded-xl text-[10px] font-bold selected-item">0g</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-3xl border border-slate-200">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 text-center tracking-widest">Step 3. Mind & Body Status</label>
+                        <p class="text-[11px] text-slate-500 text-center mb-3">음료 직후에도, 몇 시간 뒤 갑자기 컨디션이 달라졌을 때도 여기만 기록할 수 있어요.</p>
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                            <button onclick="setQuickMood(10, this)" class="mood-btn bg-white border border-slate-200 py-2 rounded-xl text-xs">🚀 최상</button>
+                            <button onclick="setQuickMood(7, this)" class="mood-btn bg-white border border-slate-200 py-2 rounded-xl text-xs selected-item">🙂 보통</button>
+                            <button onclick="setQuickMood(3, this)" class="mood-btn bg-white border border-slate-200 py-2 rounded-xl text-xs">📉 다운</button>
+                        </div>
+                        <input type="time" id="recordTime" class="w-full bg-white border border-slate-200 rounded-xl p-2 text-center font-bold text-sm mb-2">
+                        <textarea id="moodNote" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs focus:outline-none" placeholder="지금 기분이나 몸 상태를 남겨보세요."></textarea>
+                    </div>
+
+                    <input type="hidden" id="caffeineValue" value="0">
+                    <input type="hidden" id="sugarValue" value="0">
+                    <input type="hidden" id="drinkName" value="">
+                    <input type="hidden" id="moodValue" value="7">
+
+                    <div class="flex gap-2">
+                        <button onclick="saveEntry(true)" class="flex-1 bg-slate-900 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">음료 마신 직후 기록 🥤</button>
+                        <button onclick="saveEntry(false)" class="flex-1 bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg btn-active transition text-sm">몇 시간 뒤 상태만 기록 😊</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm h-52">
+                <canvas id="myChart"></canvas>
+            </div>
+
+            <div id="weeklyOverviewCards" class="grid grid-cols-3 gap-3"></div>
+
+            <div class="bg-slate-50 border border-slate-200 rounded-3xl p-5 shadow-sm">
+                <div class="flex items-center justify-between gap-3 mb-2">
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.22em]">Weekly AI Trend</p>
+                        <h3 id="weeklyInsightTitle" class="text-sm font-black text-slate-900 mt-1">최근 기록을 바탕으로 흐름을 읽어보는 중입니다.</h3>
+                    </div>
+                    <span id="weeklyInsightSourceBadge" class="text-[10px] font-black px-2 py-1 rounded-full bg-white text-slate-700 border border-slate-200">WAIT</span>
+                </div>
+                <p id="weeklyInsightBody" class="text-xs text-slate-600 leading-relaxed">기록이 쌓이면, 반복되는 패턴을 한 줄 요약으로 보여드립니다.</p>
+            </div>
+
+            <div id="historyList" class="space-y-3 pb-10"></div>
+
+            <div class="mt-10 mb-6 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 text-center shadow-inner">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Feedback</p>
+                <h4 class="text-sm font-bold text-slate-800 mb-3 leading-tight">이 서비스가 진짜 도움이 되는지,<br>짧은 의견을 남겨주세요.</h4>
+                <p class="text-xs text-slate-500 leading-relaxed mb-4">
+                    불편했던 점, 좋았던 점, 보고 싶은 기능을 한 줄로 남겨주시면 다음 업데이트에 반영하기 좋습니다.
+                </p>
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <button onclick="setFeedbackCategory('good', this)" class="feedback-btn bg-white border border-slate-200 py-2 rounded-xl text-[11px] font-bold selected-item">좋았어요</button>
+                    <button onclick="setFeedbackCategory('bug', this)" class="feedback-btn bg-white border border-slate-200 py-2 rounded-xl text-[11px] font-bold">불편했어요</button>
+                    <button onclick="setFeedbackCategory('idea', this)" class="feedback-btn bg-white border border-slate-200 py-2 rounded-xl text-[11px] font-bold">기능 제안</button>
+                </div>
+                <textarea id="feedbackText" rows="2" class="w-full bg-white border border-slate-200 rounded-2xl p-3 text-xs focus:outline-none mb-3" placeholder="한 줄 의견을 남겨주세요."></textarea>
+                <input type="hidden" id="feedbackCategory" value="good">
+                <button onclick="saveFeedback()" class="inline-block bg-slate-900 text-white px-10 py-4 rounded-2xl text-xs font-black shadow-xl btn-active transition hover:bg-emerald-600">
+                    인앱 피드백 남기기 🎤
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-[100] p-4">
+        <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onclick="toggleModal()"></div>
+        <div class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl z-[101] overflow-hidden flex flex-col p-8 text-center">
+            <h2 class="text-xl font-black text-emerald-600 mb-4 italic">"Know Your Own Pattern."</h2>
+            <div class="text-xs text-slate-600 leading-relaxed space-y-3 text-left">
+                <p><strong>이 서비스의 목적</strong><br>커피를 무조건 참는 앱이 아니라, 내가 카페인과 당분, 수면에 어떻게 반응하는지 이해하기 위한 기록장입니다.</p>
+                <p><strong>아침 리포트</strong><br>수면 시간, 기분, 워치 데이터, 오늘 목표를 적으면서 어제 무엇이 좋았고 나빴는지 떠올려보세요.</p>
+                <p><strong>음료 기록</strong><br>일반 커피, 디카페인, 차, 무카페인 음료를 나누어 기록하고 당분과 현재 몸 상태도 함께 남길 수 있습니다.</p>
+                <p><strong>현재 범위</strong><br>지금은 모든 식단을 다 추적하지 않고, 먼저 수면과 카페인 반응을 읽는 데 집중합니다.</p>
+                <p><strong>장기 목표</strong><br>기록이 쌓이면, 어떤 날 컨디션이 좋았는지와 어떤 선택이 나와 잘 맞는지 더 긴 흐름으로 볼 수 있습니다.</p>
+            </div>
+            <button onclick="toggleModal()" class="w-full bg-emerald-600 text-white mt-6 py-4 rounded-xl font-black text-sm">기록 시작하기</button>
+        </div>
+    </div>
+
+    <script>
+        const ALIBABA_URL = "https://wellnesot-brain-unwrkhiccv.ap-northeast-2.fcapp.run";
+        let allData = JSON.parse(localStorage.getItem("wellnessData")) || {};
+        let chartInstance = null;
+
+        function persistLocalData() {
+            localStorage.setItem("wellnessData", JSON.stringify(allData));
+        }
+
+        function isLoggedIn() {
+            return Boolean(getTelegramUserId());
+        }
+
+        function updateLoginBenefitBanner() {
+            const banner = document.getElementById("login-benefit-banner");
+            if (!banner) return;
+            banner.classList.toggle("hidden", isLoggedIn());
+        }
+
+        function showLoginBenefitPrompt() {
+            const key = "login_benefit_prompt_seen";
+            if (localStorage.getItem(key) === "1") return;
+            localStorage.setItem(key, "1");
+            alert("지금은 이 기기 안에만 저장됩니다.\n텔레그램 로그인하면 기록이 클라우드에도 저장되어 다른 기기에서도 이어서 볼 수 있어요.");
+        }
+
+        function getInsightCacheKey(type, dateStr, userId) {
+            return `aiInsight:${type}:${userId}:${dateStr}`;
+        }
+
+        function getBannerCacheKey(dateStr, userId) {
+            return `aiBanner:${userId}:${dateStr}`;
+        }
+
+        function getGreetingByHour(payload, hour) {
+            if (hour >= 5 && hour < 12) return payload.morning_greeting;
+            if (hour >= 12 && hour < 18) return payload.afternoon_greeting;
+            if (hour >= 18 && hour < 22) return payload.evening_greeting;
+            return payload.night_greeting;
+        }
+
+        function getTelegramUserId() {
+            return localStorage.getItem("telegram_user_id");
+        }
+
+        function getSelectedDateData() {
+            const date = document.getElementById("targetDate").value;
+            return allData[date] || { logs: [] };
+        }
+
+        function getCurrentMetrics(date) {
+            const d = allData[date] || { logs: [] };
+            const logs = d.logs || [];
+            return {
+                caffeine: logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0),
+                sugar: logs.reduce((s, l) => s + (l.sugar > 0 ? l.sugar : 0), 0),
+                entries: logs.length,
+                mood: d.mood || 0,
+                sleep: d.sleep || 0
+            };
+        }
+
+        function parseQuickCapture(text) {
+            const normalized = text.trim();
+            const lower = normalized.toLowerCase();
+            let amount = 0;
+            let sugar = 0;
+            let name = "빠른 기록";
+            let isIntake = false;
+
+            if (/아메리카노|커피|라떼|에스프레소/.test(normalized)) {
+                amount = 150;
+                name = "빠른 기록 · 커피";
+                isIntake = true;
+            } else if (/차|티|녹차|홍차/.test(normalized)) {
+                amount = 40;
+                name = "빠른 기록 · 차";
+                isIntake = true;
+            } else if (/디카페인/.test(normalized)) {
+                amount = 15;
+                name = "빠른 기록 · 디카페인";
+                isIntake = true;
+            } else if (/물|무카페인/.test(normalized)) {
+                amount = 0;
+                name = "빠른 기록 · 무카페인";
+                isIntake = true;
+            }
+
+            if (/초코|달|콜라|탄산|디저트|케이크/.test(normalized)) {
+                sugar = 10;
+            }
+
+            let mood = 7;
+            if (/불안|두근|심장|예민|손떨|떨림|다운|피곤/.test(normalized)) {
+                mood = 3;
+            } else if (/집중|괜찮|맑음|좋음|안정/.test(normalized)) {
+                mood = 8;
+            }
+
+            if (!isIntake) {
+                name = "빠른 기록 · 상태";
+            }
+
+            return {
+                isIntake,
+                amount,
+                sugar,
+                mood,
+                name,
+                note: normalized
+            };
+        }
+
+        async function syncLogToCloud(payload) {
+            const userId = getTelegramUserId();
+            if (!userId) {
+                return { ok: false, skipped: true, reason: "not_logged_in" };
+            }
+
+            const response = await fetch(`${ALIBABA_URL}/api/log`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: userId,
+                    ...payload
+                })
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || "서버 저장 실패");
+            }
+
+            return result;
+        }
+
+        async function saveQuickCapture() {
+            const input = document.getElementById("quickCaptureInput");
+            const status = document.getElementById("quickCaptureStatus");
+            const text = input.value.trim();
+
+            if (!text) {
+                status.innerText = "먼저 한 줄 기록을 적어주세요.";
+                return;
+            }
+
+            const parsed = parseQuickCapture(text);
+            document.getElementById("moodNote").value = parsed.note;
+            document.getElementById("recordTime").value = new Date().toTimeString().slice(0, 5);
+
+            if (parsed.isIntake) {
+                document.getElementById("caffeineValue").value = parsed.amount;
+                document.getElementById("sugarValue").value = parsed.sugar;
+                document.getElementById("drinkName").value = parsed.name;
+            }
+            document.getElementById("moodValue").value = parsed.mood;
+
+            await saveEntry(parsed.isIntake, {
+                nameOverride: parsed.name,
+                noteOverride: parsed.note,
+                amountOverride: parsed.amount,
+                sugarOverride: parsed.sugar,
+                moodOverride: parsed.mood
+            });
+
+            input.value = "";
+            status.innerText = parsed.isIntake
+                ? "빠른 음료 기록으로 저장했어요. 필요하면 아래 타임라인에서 다시 확인해보세요."
+                : "빠른 상태 기록으로 저장했어요. 몇 시간 뒤 변화까지 이어서 남겨보면 패턴이 더 잘 보입니다.";
+        }
+
+        function setFeedbackCategory(category, btn) {
+            document.getElementById("feedbackCategory").value = category;
+            document.querySelectorAll(".feedback-btn").forEach(b => b.classList.remove("selected-item"));
+            btn.classList.add("selected-item");
+        }
+
+        function toggleWhyCard() {
+            const copy = document.getElementById("whyCopy");
+            const btn = document.getElementById("whyToggle");
+            copy.classList.toggle("collapsed-copy");
+            btn.innerText = copy.classList.contains("collapsed-copy") ? "더 보기" : "접기";
+        }
+
+        function getRuleBasedInsight(dateStr) {
+            const today = allData[dateStr] || {};
+            const yesterday = allData[new Date(new Date(dateStr).setDate(new Date(dateStr).getDate() - 1)).toISOString().split("T")[0]];
+            const dates = Object.keys(allData).sort().slice(-7);
+            const recentLogs = dates.flatMap(d => (allData[d]?.logs || []));
+            const recentCaffeine = recentLogs.reduce((sum, log) => sum + (log.amount || 0), 0);
+            const avgRecentCaffeine = dates.length ? Math.round(recentCaffeine / dates.length) : 0;
+
+            if (today.sleep && today.sleep < 6) {
+                return {
+                    title: "수면이 짧았던 날입니다",
+                    body: "오늘은 컨디션이 흔들릴 수 있으니, 카페인을 빠르게 올리기보다 목표를 낮게 잡고 천천히 반응을 확인해보세요."
+                };
+            }
+
+            if (yesterday?.alcohol === "high") {
+                return {
+                    title: "어제 음주 영향 가능성이 있어요",
+                    body: "오늘 아침 컨디션 저하는 카페인 부족보다 어제 밤의 음주 영향일 수 있습니다. 평소보다 부드럽게 시작해보세요."
+                };
+            }
+
+            if (today.exercise === "hard") {
+                return {
+                    title: "강한 운동 기록이 있는 날입니다",
+                    body: "운동 피로와 카페인 반응이 섞일 수 있으니, 몸 상태와 심박 느낌을 같이 기록해두면 나중에 패턴을 읽기 좋습니다."
+                };
+            }
+
+            if (avgRecentCaffeine >= 180) {
+                return {
+                    title: "최근 카페인 평균이 조금 높아요",
+                    body: `최근 일주일 평균 카페인은 약 ${avgRecentCaffeine}mg입니다. 오늘은 목표를 조금 낮게 잡아 비교해보는 것도 좋겠습니다.`
+                };
+            }
+
+            return {
+                title: "오늘의 기준선을 만드는 날입니다",
+                body: "수면, 기분, 날씨, 첫 음료 반응을 함께 남기면 나중에 어떤 선택이 컨디션을 좋게 만드는지 더 선명하게 보입니다."
+            };
+        }
+
+        function updateDailyInsight() {
+            const dateStr = document.getElementById("targetDate").value;
+            const insight = getRuleBasedInsight(dateStr);
+            document.getElementById("dailyInsightTitle").innerText = insight.title;
+            document.getElementById("dailyInsightBody").innerText = insight.body;
+            document.getElementById("insightSourceBadge").innerText = "RULE";
+        }
+
+        function renderOverviewCards() {
+            const date = document.getElementById("targetDate").value;
+            const d = allData[date] || { logs: [] };
+            const metrics = getCurrentMetrics(date);
+            const cards = [
+                { label: "오늘 카페인", value: `${metrics.caffeine}mg`, note: `목표 ${d.caffeineGoal ?? 150}mg 기준` },
+                { label: "오늘 당분", value: `${metrics.sugar}g`, note: `목표 ${d.sugarGoal ?? 30}g 기준` },
+                { label: "오늘 수면", value: `${d.sleep || 0}h`, note: d.sleepScore ? `수면 점수 ${d.sleepScore}pt` : "아침 리포트 기준" },
+                { label: "기록 횟수", value: `${metrics.entries}건`, note: metrics.entries ? "오늘 상태 흐름이 쌓이고 있어요" : "첫 기록을 남겨보세요" }
+            ];
+
+            document.getElementById("overviewCards").innerHTML = cards.map(card => `
+                <article class="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
+                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-[0.18em]">${card.label}</div>
+                    <div class="text-2xl font-black text-slate-900 mt-2">${card.value}</div>
+                    <div class="text-[11px] text-slate-500 mt-2 leading-relaxed">${card.note}</div>
+                </article>
+            `).join("");
+        }
+
+        function renderTodayTimeline() {
+            const date = document.getElementById("targetDate").value;
+            const d = allData[date] || { logs: [] };
+            const logs = [...(d.logs || [])].sort((a, b) => a.time.localeCompare(b.time));
+            const list = document.getElementById("todayTimelineList");
+            const count = document.getElementById("todayTimelineCount");
+            count.innerText = `${logs.length}건`;
+
+            if (!logs.length) {
+                list.innerHTML = '<div class="rounded-2xl bg-slate-50 border border-slate-200 px-4 py-4 text-xs text-slate-500">오늘 타임라인이 아직 비어 있어요. 위 빠른 입력이나 아래 상세 기록으로 첫 흐름을 남겨보세요.</div>';
+                return;
+            }
+
+            list.innerHTML = logs.map(log => `
+                <article class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-black text-slate-900">${log.time} · ${log.name}</div>
+                            <div class="text-[11px] text-slate-500 mt-1">${log.note || "메모 없음"}</div>
+                        </div>
+                        <div class="text-right text-[11px] font-bold text-slate-500">
+                            <div>☕ ${log.amount}mg</div>
+                            <div>🍬 ${log.sugar}g · 😊 ${log.mood}pt</div>
+                        </div>
+                    </div>
+                </article>
+            `).join("");
+        }
+
+        function renderWeeklyOverview() {
+            const dates = Object.keys(allData).sort().slice(-7);
+            const avg = (values) => values.length ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10 : 0;
+            const caffeineValues = dates.map(d => (allData[d].logs || []).reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0));
+            const sugarValues = dates.map(d => (allData[d].logs || []).reduce((s, l) => s + (l.sugar > 0 ? l.sugar : 0), 0));
+            const sleepValues = dates.map(d => allData[d].sleep || 0);
+
+            document.getElementById("weeklyOverviewCards").innerHTML = [
+                { label: "7일 평균 카페인", value: `${avg(caffeineValues)}mg`, tone: "amber" },
+                { label: "7일 평균 당분", value: `${avg(sugarValues)}g`, tone: "pink" },
+                { label: "7일 평균 수면", value: `${avg(sleepValues)}h`, tone: "emerald" }
+            ].map(card => `
+                <article class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="text-[10px] font-black text-slate-400 uppercase tracking-[0.18em]">${card.label}</div>
+                    <div class="text-xl font-black text-slate-900 mt-2">${card.value}</div>
+                </article>
+            `).join("");
+        }
+
+        function setWeeklyFallbackInsight() {
+            document.getElementById("weeklyInsightTitle").innerText = "최근 흐름을 읽는 기준선을 만들고 있어요";
+            document.getElementById("weeklyInsightBody").innerText = "며칠만 더 기록이 쌓이면, 주간 단위로 카페인과 수면 패턴을 요약해드릴 수 있습니다.";
+            document.getElementById("weeklyInsightSourceBadge").innerText = "RULE";
+        }
+
+        async function loadAIInsight(type) {
+            const userId = getTelegramUserId();
+            if (!userId) return;
+
+            const dateStr = document.getElementById("targetDate").value;
+            const cacheKey = getInsightCacheKey(type, dateStr, userId);
+            const cached = localStorage.getItem(cacheKey);
+
+            if (cached) {
+                const data = JSON.parse(cached);
+                if (type === "daily") {
+                    document.getElementById("dailyInsightTitle").innerText = data.title;
+                    document.getElementById("dailyInsightBody").innerText = data.body;
+                    document.getElementById("insightSourceBadge").innerText = "AI";
+                } else {
+                    document.getElementById("weeklyInsightTitle").innerText = data.title;
+                    document.getElementById("weeklyInsightBody").innerText = data.body;
+                    document.getElementById("weeklyInsightSourceBadge").innerText = "AI";
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(`${ALIBABA_URL}/api/ai-insight?user_id=${userId}&type=${type}`);
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "AI insight failed");
+
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+
+                if (type === "daily") {
+                    document.getElementById("dailyInsightTitle").innerText = data.title;
+                    document.getElementById("dailyInsightBody").innerText = data.body;
+                    document.getElementById("insightSourceBadge").innerText = "AI";
+                } else {
+                    document.getElementById("weeklyInsightTitle").innerText = data.title;
+                    document.getElementById("weeklyInsightBody").innerText = data.body;
+                    document.getElementById("weeklyInsightSourceBadge").innerText = "AI";
+                }
+            } catch (e) {
+                console.error(`${type} AI 인사이트 로딩 실패:`, e);
+                if (type === "weekly") {
+                    setWeeklyFallbackInsight();
+                }
+            }
+        }
+
+        async function loadAIBanner(weather) {
+            const userId = getTelegramUserId();
+            if (!userId) return;
+            const userName = localStorage.getItem("telegram_user_name") || "";
+
+            const dateStr = document.getElementById("targetDate").value;
+            const cacheKey = getBannerCacheKey(dateStr, userId);
+            const cached = localStorage.getItem(cacheKey);
+            const desc = document.getElementById("weather-desc");
+            const badge = document.getElementById("weatherSourceBadge");
+            const greet = document.getElementById("weather-greet");
+            const hour = new Date().getHours();
+
+            if (cached) {
+                const data = JSON.parse(cached);
+                if (desc) desc.innerText = data.message;
+                if (greet) {
+                    const greeting = getGreetingByHour(data, hour);
+                    if (greeting) greet.innerText = greeting;
+                }
+                if (badge) badge.innerText = "AI";
+                return;
+            }
+
+            try {
+                const response = await fetch(`${ALIBABA_URL}/api/ai-banner`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        user_name: userName,
+                        weather: weather
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "AI banner failed");
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+                if (desc) desc.innerText = data.message;
+                if (greet) {
+                    const greeting = getGreetingByHour(data, hour);
+                    if (greeting) greet.innerText = greeting;
+                }
+                if (badge) badge.innerText = "AI";
+            } catch (e) {
+                console.error("배너 AI 멘트 로딩 실패:", e);
+                if (badge) badge.innerText = "RULE";
+            }
+        }
+
+        function onTelegramAuth(user) {
+            console.log("로그인 성공!", user);
+            localStorage.setItem("telegram_user_id", user.id);
+            localStorage.setItem("telegram_user_name", user.first_name);
+            alert(`${user.first_name}님, 환영합니다!`);
+            location.reload();
+        }
+
+        window.onload = async function () {
+            const today = new Date().toISOString().split("T")[0];
+            document.getElementById("targetDate").value = today;
+            updateTimeInput();
+            updateRealtimeWeather();
+
+            const savedId = localStorage.getItem("telegram_user_id");
+            const userName = localStorage.getItem("telegram_user_name");
+            updateLoginBenefitBanner();
+
+            if (savedId) {
+                console.log(`${userName}(${savedId}) 사용자로 데이터 동기화 시작`);
+                await loadCloudData(savedId);
+            } else {
+                console.log("로그인이 필요합니다. 텔레그램 버튼을 눌러주세요.");
+            }
+        };
+
+        async function loadCloudData(userId) {
+            try {
+                const response = await fetch(`${ALIBABA_URL}?user_id=${userId}`);
+                const dbData = await response.json();
+
+                console.log("DB에서 받은 데이터:", dbData);
+
+                dbData.forEach(item => {
+                    const date = new Date(item.timestamp);
+                    const dateStr = date.toLocaleDateString("en-CA");
+                    const timeStr = date.toTimeString().slice(0, 5);
+
+                    if (!allData[dateStr]) allData[dateStr] = { logs: [], mood: 7, sleep: 7 };
+
+                    if (item.type === "morning") {
+                        Object.assign(allData[dateStr], {
+                            sleep: item.sleep || 7,
+                            mood: item.mood || 8,
+                            caffeineGoal: item.caffeineGoal !== null && item.caffeineGoal !== undefined ? item.caffeineGoal : 150,
+                            sugarGoal: item.sugarGoal !== null && item.sugarGoal !== undefined ? item.sugarGoal : 30,
+                            sleepScore: item.sleepScore || "",
+                            rhr: item.rhr || "",
+                            note: item.note || ""
+                        });
+                        return;
+                    }
+
+                    if (!allData[dateStr].logs.find(l => l.id === item.timestamp)) {
+                        allData[dateStr].logs.push({
+                            id: item.timestamp,
+                            time: timeStr,
+                            amount: item.caffeine,
+                            sugar: item.sugar,
+                            name: item.text,
+                            mood: item.mood || 7,
+                            note: item.note || ""
+                        });
+                    }
+                });
+
+                persistLocalData();
+                console.log("최종 변환된 데이터(allData):", allData);
+                loadDailyData();
+                renderHistory();
+                renderChart();
+                renderOverviewCards();
+                renderTodayTimeline();
+                renderWeeklyOverview();
+                updateProgressBars();
+                loadAIInsight("daily");
+                loadAIInsight("weekly");
+            } catch (e) {
+                console.error("데이터 로딩 실패:", e);
+                loadDailyData();
+                renderHistory();
+                renderChart();
+                renderOverviewCards();
+                renderTodayTimeline();
+                renderWeeklyOverview();
+                setWeeklyFallbackInsight();
+            }
+        }
+
+        function updateTimeInput() {
+            document.getElementById("recordTime").value = new Date().toTimeString().slice(0, 5);
+        }
+
+        function switchTab(tab) {
+            const isMorning = tab === "morning";
+            document.getElementById("morningSection").classList.toggle("hidden", !isMorning);
+            document.getElementById("caffeineSection").classList.toggle("hidden", isMorning);
+            document.getElementById("tabMorning").className = isMorning ? "flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active" : "flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active";
+            document.getElementById("tabCaffeine").className = !isMorning ? "flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active" : "flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active";
+            if (!isMorning) updateProgressBars();
+        }
+
+        async function updateRealtimeWeather() {
+            const greet = document.getElementById("weather-greet");
+            const desc = document.getElementById("weather-desc");
+            const temp = document.getElementById("temp-display");
+            const hour = new Date().getHours();
+            const userName = localStorage.getItem("telegram_user_name") || "사용자님";
+            let msg = `${userName}님, 오늘도 반가워요!`;
+            if (hour >= 5 && hour < 12) msg = `${userName}님, 좋은 아침이에요 🌅`;
+            else if (hour >= 12 && hour < 18) msg = `${userName}님, 오후 리듬을 잘 챙겨봐요 ☕`;
+            else if (hour >= 18 && hour < 22) msg = `${userName}님, 오늘 흐름을 가볍게 돌아봐요 🌙`;
+            else msg = `${userName}님, 오늘 하루도 천천히 마무리해봐요 ✨`;
+            if (greet) greet.innerText = msg;
+            try {
+                const res = await fetch("https://wttr.in/Seoul?format=j1");
+                const data = await res.json();
+                const cur = data.current_condition[0];
+                if (temp) temp.innerText = `${cur.temp_C}°C`;
+                if (desc) desc.innerText = `서울: ${cur.weatherDesc[0].value} | 습도 ${cur.humidity}% | 오늘 목표와 카페인 한도를 가볍게 정해보세요.`;
+                const badge = document.getElementById("weatherSourceBadge");
+                if (badge) badge.innerText = "RULE";
+                await loadAIBanner({
+                    temp_c: cur.temp_C,
+                    humidity: cur.humidity,
+                    condition: cur.weatherDesc[0].value,
+                    local_hour: hour
+                });
+            } catch (e) {
+                if (desc) desc.innerText = "현재 실시간 날씨 정보를 불러올 수 없습니다.";
+            }
+        }
+
+        function loadDailyData() {
+            const date = document.getElementById("targetDate").value;
+            const d = allData[date] || { caffeineGoal: 150, sugarGoal: 30, mood: 8 };
+            document.getElementById("sleep").value = d.sleep || 7;
+            document.getElementById("mood").value = d.mood || 8;
+            document.getElementById("caffeineGoal").value = d.caffeineGoal !== undefined ? d.caffeineGoal : 150;
+            document.getElementById("sugarGoal").value = d.sugarGoal !== undefined ? d.sugarGoal : 30;
+            document.getElementById("sleepScore").value = d.sleepScore || "";
+            document.getElementById("rhr").value = d.rhr || "";
+            document.getElementById("exercise").value = d.exercise || "none";
+            document.getElementById("alcohol").value = d.alcohol || "none";
+            document.getElementById("nap").value = d.nap || "none";
+            document.getElementById("note").value = d.note || "";
+            loadYesterdaySummary(date);
+            updateProgressBars();
+            updateDailyInsight();
+            renderOverviewCards();
+            renderTodayTimeline();
+            renderWeeklyOverview();
+        }
+
+        function loadYesterdaySummary(currentDate) {
+            const yDate = new Date(new Date(currentDate).setDate(new Date(currentDate).getDate() - 1)).toISOString().split("T")[0];
+            const yd = allData[yDate];
+            const div = document.getElementById("yesterdaySummary");
+            if (!yd) {
+                div.innerHTML = '<p class="col-span-2 text-slate-400 font-normal italic py-1 text-center w-full">어제 기록이 없습니다.</p>';
+                return;
+            }
+            const totalC = yd.logs ? yd.logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0) : 0;
+            const totalS = yd.logs ? yd.logs.reduce((s, l) => s + (l.sugar > 0 ? l.sugar : 0), 0) : 0;
+            div.innerHTML = `
+                <div>SLEEP: ${yd.sleep}h (${yd.sleepScore || "-"}pt)</div>
+                <div>CAFF: ${totalC}mg / SUGAR: ${totalS}g</div>
+                <div>RHR: ${yd.rhr || "-"}bpm</div>
+                <div>MOOD: <span class="text-emerald-600">${yd.mood}/10</span></div>
+            `;
+        }
+
+        function updateProgressBars() {
+            const date = document.getElementById("targetDate").value;
+            const d = allData[date] || { logs: [] };
+            const goalC = Number(document.getElementById("caffeineGoal").value);
+            const goalS = Number(document.getElementById("sugarGoal").value);
+            const curC = d.logs ? d.logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0) : 0;
+            const curS = d.logs ? d.logs.reduce((s, l) => s + (l.sugar > 0 ? l.sugar : 0), 0) : 0;
+            const pC = Math.min((curC / (goalC || 1)) * 100, 100);
+            const pS = Math.min((curS / (goalS || 1)) * 100, 100);
+            document.getElementById("caffeineProgressText").innerText = `${curC} / ${goalC} mg`;
+            document.getElementById("caffeineProgressBar").style.width = `${pC}%`;
+            document.getElementById("sugarProgressText").innerText = `${curS} / ${goalS} g`;
+            document.getElementById("sugarProgressBar").style.width = `${pS}%`;
+            document.getElementById("warningLabel").classList.toggle("hidden", curC <= goalC && curS <= goalS);
+        }
+
+        function setDrink(mg, name, btn) {
+            document.getElementById("caffeineValue").value = mg;
+            document.getElementById("drinkName").value = name;
+            document.querySelectorAll(".drink-btn").forEach(b => b.classList.remove("selected-item"));
+            btn.classList.add("selected-item");
+        }
+
+        function setSugar(val, label, btn) {
+            document.getElementById("sugarValue").value = val;
+            document.querySelectorAll(".sugar-btn").forEach(b => b.classList.remove("selected-item"));
+            btn.classList.add("selected-item");
+        }
+
+        function setQuickMood(val, btn) {
+            document.getElementById("moodValue").value = val;
+            document.querySelectorAll(".mood-btn").forEach(b => b.classList.remove("selected-item"));
+            btn.classList.add("selected-item");
+        }
+
+        async function saveMorningData() {
+            const date = document.getElementById("targetDate").value;
+            if (!allData[date]) allData[date] = { logs: [] };
+            const morningPayload = {
+                sleep: Number(document.getElementById("sleep").value),
+                mood: Number(document.getElementById("mood").value),
+                caffeineGoal: Number(document.getElementById("caffeineGoal").value),
+                sugarGoal: Number(document.getElementById("sugarGoal").value),
+                sleepScore: Number(document.getElementById("sleepScore").value) || 0,
+                rhr: Number(document.getElementById("rhr").value) || 0,
+                exercise: document.getElementById("exercise").value,
+                alcohol: document.getElementById("alcohol").value,
+                nap: document.getElementById("nap").value,
+                note: document.getElementById("note").value
+            };
+
+            Object.assign(allData[date], morningPayload);
+            persistLocalData();
+
+            try {
+                const syncResult = await syncLogToCloud({
+                    type: "morning",
+                    timestamp: new Date(`${date}T06:00:00`).getTime(),
+                    text: "아침 리포트",
+                    ...morningPayload
+                });
+                if (syncResult.skipped) {
+                    showLoginBenefitPrompt();
+                    alert("저장되었습니다. 현재는 이 기기에만 저장됐어요.");
+                } else {
+                    alert("저장되었습니다. 아침 리포트가 서버에도 저장됐어요.");
+                }
+            } catch (e) {
+                console.error("아침 리포트 서버 저장 실패:", e);
+                alert("기기에는 저장됐지만 서버 저장은 실패했습니다.");
+            }
+
+            loadDailyData();
+            renderHistory();
+            renderChart();
+        }
+
+        async function saveEntry(isIntake, overrides = {}) {
+            const date = document.getElementById("targetDate").value;
+            const mg = overrides.amountOverride !== undefined ? overrides.amountOverride : (isIntake ? Number(document.getElementById("caffeineValue").value) : 0);
+            const sugar = overrides.sugarOverride !== undefined ? overrides.sugarOverride : (isIntake ? Number(document.getElementById("sugarValue").value) : 0);
+            const name = overrides.nameOverride || (isIntake ? (document.getElementById("drinkName").value || "선택 안됨") : "상태 체크");
+            const mood = overrides.moodOverride !== undefined ? overrides.moodOverride : Number(document.getElementById("moodValue").value);
+            const note = overrides.noteOverride !== undefined ? overrides.noteOverride : document.getElementById("moodNote").value;
+            const timestamp = Date.now();
+            if (!allData[date]) allData[date] = { logs: [] };
+            allData[date].logs.push({
+                id: timestamp,
+                time: document.getElementById("recordTime").value,
+                amount: mg,
+                name: name,
+                sugar: sugar,
+                mood: mood,
+                note: note
+            });
+            persistLocalData();
+
+            try {
+                const syncResult = await syncLogToCloud({
+                    type: "entry",
+                    timestamp: timestamp,
+                    text: name,
+                    caffeine: mg,
+                    sugar: sugar,
+                    mood: mood,
+                    note: note
+                });
+                if (syncResult.skipped) {
+                    showLoginBenefitPrompt();
+                }
+            } catch (e) {
+                console.error("기록 서버 저장 실패:", e);
+                alert("기기에는 저장됐지만 서버 저장은 실패했습니다.");
+            }
+
+            document.getElementById("moodNote").value = "";
+            updateTimeInput();
+            loadDailyData();
+            renderHistory();
+            renderChart();
+        }
+
+        function deleteRecord(date, recordId) {
+            if (!confirm("삭제할까요?")) return;
+            allData[date].logs = allData[date].logs.filter(l => l.id !== recordId);
+            persistLocalData();
+            renderHistory();
+            updateProgressBars();
+            renderChart();
+        }
+
+        async function saveFeedback() {
+            const text = document.getElementById("feedbackText").value.trim();
+            const category = document.getElementById("feedbackCategory").value;
+
+            if (!text) {
+                alert("한 줄 의견을 적어주세요.");
+                return;
+            }
+
+            try {
+                const syncResult = await syncLogToCloud({
+                    type: "feedback",
+                    timestamp: Date.now(),
+                    text: text,
+                    note: text,
+                    feedbackCategory: category
+                });
+                if (syncResult.skipped) {
+                    showLoginBenefitPrompt();
+                    alert("피드백은 이 기기에서만 임시 저장됩니다. 로그인 후 보내면 운영자에게 전달돼요.");
+                    return;
+                }
+                document.getElementById("feedbackText").value = "";
+                alert("피드백 감사합니다. 다음 업데이트에 큰 도움이 됩니다.");
+            } catch (e) {
+                console.error("피드백 저장 실패:", e);
+                alert("피드백 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+            }
+        }
+
+        function renderHistory() {
+            const list = document.getElementById("historyList");
+            list.innerHTML = "";
+            const sortedDates = Object.keys(allData).sort().reverse().slice(0, 5);
+            sortedDates.forEach(date => {
+                const d = allData[date];
+                const logs = (d.logs || []).sort((a, b) => a.time.localeCompare(b.time));
+                const div = document.createElement("div");
+                div.className = "bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-2";
+                const logsHtml = logs.map(l => `
+                    <div class="bg-slate-50 px-3 py-2 rounded-2xl text-[10px] space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-black text-slate-800">${l.time} - ${l.name}</span>
+                            <button onclick="deleteRecord('${date}', ${l.id})" class="text-red-300 font-bold">삭제</button>
+                        </div>
+                        <div class="flex gap-2 text-slate-500 font-bold">
+                            <span>☕ ${l.amount >= 0 ? l.amount + "mg" : "Water"}</span>
+                            <span>🍬 ${l.sugar}g</span>
+                            <span class="text-emerald-600">😊 상태: ${l.mood}pt</span>
+                        </div>
+                        ${l.note ? `<p class="text-slate-400 italic font-medium leading-tight">"${l.note}"</p>` : ""}
+                    </div>
+                `).join("");
+                div.innerHTML = `<div class="flex justify-between items-center"><span class="text-[9px] font-black text-slate-400 uppercase">${date}</span><span class="text-xs font-black text-emerald-600">${d.mood} Morning pt</span></div><div class="space-y-1.5">${logsHtml || '<p class="text-[10px] text-slate-300 italic px-2 py-1">기록 없음</p>'}</div>`;
+                list.appendChild(div);
+            });
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById("myChart").getContext("2d");
+            const dates = Object.keys(allData).sort().slice(-7);
+            const moodData = dates.map(d => allData[d].mood || 0);
+            const caffeineData = dates.map(d => allData[d].logs ? allData[d].logs.reduce((s, l) => s + (l.amount > 0 ? l.amount : 0), 0) : 0);
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: dates.map(d => d.slice(5)),
+                    datasets: [
+                        { label: "Caffeine", data: caffeineData, backgroundColor: "rgba(245, 158, 11, 0.2)", borderRadius: 4, yAxisID: "y1" },
+                        { label: "Condition", data: moodData, type: "line", borderColor: "#10b981", borderWidth: 2, tension: 0.4, pointRadius: 0, yAxisID: "y" }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { position: "left", min: 0, max: 10, ticks: { display: false }, grid: { display: false } },
+                        y1: { position: "right", min: 0, max: 600, ticks: { display: false }, grid: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { size: 9, weight: "bold" } } }
+                    }
+                }
+            });
+        }
+
+        function toggleModal() {
+            const m = document.getElementById("modal");
+            m.classList.toggle("opacity-0");
+            m.classList.toggle("pointer-events-none");
+        }
+
+        function exportData() {
+            const blob = new Blob([JSON.stringify(allData, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "wellness_log_backup.json";
+            a.click();
+        }
+    </script>
+</body>
+</html>
