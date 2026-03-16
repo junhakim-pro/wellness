@@ -763,6 +763,21 @@
             const recentLogs = dates.flatMap(d => (allData[d]?.logs || []));
             const recentCaffeine = recentLogs.reduce((sum, log) => sum + (log.amount || 0), 0);
             const avgRecentCaffeine = dates.length ? Math.round(recentCaffeine / dates.length) : 0;
+            const alcoholImpact = today.quickAlcoholImpact || today.alcohol || yesterday?.quickAlcoholImpact || yesterday?.alcohol;
+
+            if (alcoholImpact === "high") {
+                return {
+                    title: "오늘은 회복 영향부터 보는 날입니다",
+                    body: "어젯밤 음주 영향이 큰 편이라면 오늘 예민함은 카페인보다 회복 부족에서 올 수 있어요. 첫 잔은 천천히 판단해보세요."
+                };
+            }
+
+            if (alcoholImpact === "medium" || alcoholImpact === "light") {
+                return {
+                    title: "어젯밤 술 영향도 함께 봐주세요",
+                    body: "오늘의 무거움이나 두근거림은 카페인만의 문제가 아닐 수 있어요. 회복 상태와 수분감도 같이 체크해보세요."
+                };
+            }
 
             if (today.sleep && today.sleep < 6) {
                 return {
