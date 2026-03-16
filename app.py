@@ -89,7 +89,7 @@ def build_ai_context(rows, insight_type):
                 "caffeine": 0,
                 "sugar": 0,
                 "entryCount": 0,
-                "drinkTexts": [],
+                "entryTexts": [],
             }
 
         if item.get("type") == "morning":
@@ -110,7 +110,10 @@ def build_ai_context(rows, insight_type):
             by_date[date_str]["sugar"] += item.get("sugar", 0) or 0
             by_date[date_str]["entryCount"] += 1
             if item.get("text"):
-                by_date[date_str]["drinkTexts"].append(item["text"])
+                entry_text = item["text"]
+                if item.get("note"):
+                    entry_text = f"{entry_text} | {item['note']}"
+                by_date[date_str]["entryTexts"].append(entry_text)
 
     dates = sorted(by_date.keys())
     recent_dates = dates[-7:] if insight_type == "daily" else dates[-14:]
@@ -129,13 +132,13 @@ def call_qwen_insight(insight_type, context_rows):
     if insight_type == "daily":
         user_prompt = (
             "Create one gentle morning insight for today's planning. "
-            "Mention only the most useful pattern from recent sleep, caffeine, sugar, exercise, alcohol, nap, or mood data.\n"
+            "Mention only the most useful pattern from recent sleep, caffeine, sugar, exercise, alcohol, nap, meal pattern, or mood data.\n"
             f"Data: {json.dumps(context_rows, ensure_ascii=False)}"
         )
     else:
         user_prompt = (
             "Create one short weekly trend insight. "
-            "Highlight one repeated pattern the user may want to test next week.\n"
+            "Highlight one repeated pattern the user may want to test next week, including meal pattern if relevant.\n"
             f"Data: {json.dumps(context_rows, ensure_ascii=False)}"
         )
 

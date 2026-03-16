@@ -281,6 +281,7 @@
                         <p><strong>지금 음료를 마셨다면:</strong> Step 1-2-3을 고르고 <strong>음료 + 상태 함께 기록</strong>을 눌러주세요.</p>
                         <p><strong>몇 시간 뒤 갑자기 컨디션이 변했다면:</strong> 음료 선택 없이 Step 3만 적고 <strong>상태 변화만 기록</strong>을 누르면 됩니다.</p>
                         <p><strong>어젯밤 술 영향이 의심되면:</strong> 아래 술 quick log를 남겨두면 오늘 컨디션 해석에서 카페인보다 회복 요인을 먼저 보게 됩니다.</p>
+                        <p><strong>식사 패턴이 영향을 준 것 같다면:</strong> 아래 Meal Factor quick log로 공복, 과식, 고탄수, 야식 같은 흐름만 가볍게 남겨도 충분합니다.</p>
                     </div>
                     <p class="text-[11px] text-slate-500 leading-relaxed mt-3">지금 상황에 맞는 흐름 하나만 골라도 충분합니다. 모든 버튼을 다 누를 필요는 없어요.</p>
                 </div>
@@ -301,6 +302,26 @@
                         <button onclick="saveAlcoholQuickLog('none')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-slate-600 btn-active">술 영향 없음</button>
                     </div>
                     <p id="alcoholQuickLogStatus" class="text-[11px] text-slate-500 leading-relaxed mt-3">컨디션이 안 좋은데 카페인 때문인지 헷갈릴 때 빠르게 남겨두면 도움이 됩니다.</p>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-100 rounded-3xl p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <div>
+                            <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">Meal Factor</p>
+                            <h3 class="text-sm font-black text-slate-900 mt-1">식사 영향 요인 quick log</h3>
+                        </div>
+                        <span class="text-[10px] font-black px-2 py-1 rounded-full bg-white text-amber-600 border border-amber-100">LIGHT TAG</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-3">칼로리나 영양소를 다 적지 않아도 됩니다. 오늘 몸 상태 해석에 영향을 준 식사 패턴만 남겨두세요.</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="saveMealFactorQuickLog('fasting')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">공복 오래감</button>
+                        <button onclick="saveMealFactorQuickLog('heavyLunch')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">점심 많이 먹음</button>
+                        <button onclick="saveMealFactorQuickLog('highCarb')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">고탄수 식사</button>
+                        <button onclick="saveMealFactorQuickLog('sugary')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">단 음식 많음</button>
+                        <button onclick="saveMealFactorQuickLog('lateMeal')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">야식</button>
+                        <button onclick="saveMealFactorQuickLog('skippedMeal')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">식사 거름</button>
+                    </div>
+                    <p id="mealFactorStatus" class="text-[11px] text-slate-500 leading-relaxed mt-3">점심 뒤 졸림, 공복 카페인, 야식 다음날 무거움처럼 식사가 컨디션을 흔든 날만 남겨도 충분합니다.</p>
                 </div>
 
                 <div class="space-y-6">
@@ -621,6 +642,20 @@
                 name = "빠른 기록 · 상태";
             }
 
+            if (!isIntake) {
+                if (/공복|배고픔|식사 거름|끼니 거름/.test(normalized)) {
+                    name = "빠른 기록 · 식사 영향 · 공복";
+                } else if (/점심 많이|과식|많이 먹음/.test(normalized)) {
+                    name = "빠른 기록 · 식사 영향 · 과식";
+                } else if (/고탄수|빵 많이|면 많이|밥 많이|탄수/.test(normalized)) {
+                    name = "빠른 기록 · 식사 영향 · 고탄수";
+                } else if (/단 음식 많|디저트 많|과자 많/.test(normalized)) {
+                    name = "빠른 기록 · 식사 영향 · 단 음식";
+                } else if (/야식/.test(normalized)) {
+                    name = "빠른 기록 · 식사 영향 · 야식";
+                }
+            }
+
             return {
                 isIntake,
                 amount,
@@ -718,6 +753,18 @@
                 return fallback;
             }
             return `${value}${suffix}`;
+        }
+
+        function getMealFactorSignal(today, yesterday) {
+            const mealTexts = [...(today.logs || []), ...((yesterday && yesterday.logs) || [])]
+                .map(log => `${log.name || ""} ${log.note || ""}`)
+                .join(" ");
+
+            if (/공복|식사 거름|끼니 거름/.test(mealTexts)) return "fasting";
+            if (/점심 많이 먹음|과식|고탄수/.test(mealTexts)) return "heavyMeal";
+            if (/단 음식 많|디저트 많|과자 많/.test(mealTexts)) return "sugaryMeal";
+            if (/야식/.test(mealTexts)) return "lateMeal";
+            return "";
         }
 
         function toggleMorningAdvanced(forceOpen) {
@@ -838,6 +885,7 @@
             const recentCaffeine = recentLogs.reduce((sum, log) => sum + (log.amount || 0), 0);
             const avgRecentCaffeine = dates.length ? Math.round(recentCaffeine / dates.length) : 0;
             const alcoholImpact = today.quickAlcoholImpact || today.alcohol || yesterday?.quickAlcoholImpact || yesterday?.alcohol;
+            const mealFactor = getMealFactorSignal(today, yesterday);
 
             if (alcoholImpact === "high") {
                 return {
@@ -850,6 +898,34 @@
                 return {
                     title: "어젯밤 술 영향도 함께 봐주세요",
                     body: "오늘의 무거움이나 두근거림은 카페인만의 문제가 아닐 수 있어요. 회복 상태와 수분감도 같이 체크해보세요."
+                };
+            }
+
+            if (mealFactor === "fasting") {
+                return {
+                    title: "공복 영향도 함께 봐주세요",
+                    body: "공복이 길었던 날엔 카페인 반응이 더 예민하거나 다운이 크게 느껴질 수 있어요. 첫 음료 전에 식사 리듬도 같이 점검해보세요."
+                };
+            }
+
+            if (mealFactor === "heavyMeal") {
+                return {
+                    title: "식곤감 영향 가능성이 있어요",
+                    body: "오늘의 오후 다운은 카페인보다 점심 이후 식곤감이나 고탄수 식사 영향일 수 있어요. 졸림 시간대를 같이 비교해보세요."
+                };
+            }
+
+            if (mealFactor === "sugaryMeal") {
+                return {
+                    title: "당류 많은 식사도 변수예요",
+                    body: "단 음식이 많았던 날엔 기분과 에너지의 흔들림이 커질 수 있어요. 오늘 다운이 카페인만의 문제인지 같이 봐주세요."
+                };
+            }
+
+            if (mealFactor === "lateMeal") {
+                return {
+                    title: "야식 영향이 남아 있을 수 있어요",
+                    body: "야식 다음날의 무거움이나 수면 질 저하는 카페인 반응과 섞일 수 있어요. 오늘은 회복 흐름도 같이 확인해보세요."
                 };
             }
 
@@ -1018,6 +1094,68 @@
             }
 
             document.getElementById("alcoholQuickLogStatus").innerText = `${labelMap[level]}으로 기록했어요. 오늘 컨디션은 카페인보다 회복 영향일 수도 있다는 힌트를 남겨둘게요.`;
+            loadDailyData();
+            renderHistory();
+            renderChart();
+        }
+
+        async function saveMealFactorQuickLog(type) {
+            const date = document.getElementById("targetDate").value;
+            const d = ensureDateEntry(date);
+            const labelMap = {
+                fasting: "식사 영향 · 공복 오래감",
+                heavyLunch: "식사 영향 · 점심 많이 먹음",
+                highCarb: "식사 영향 · 고탄수 식사",
+                sugary: "식사 영향 · 단 음식 많음",
+                lateMeal: "식사 영향 · 야식",
+                skippedMeal: "식사 영향 · 식사 거름"
+            };
+            const noteMap = {
+                fasting: "공복이 길어 오늘 카페인 반응과 기분 변화를 같이 보기 위한 기록",
+                heavyLunch: "점심 과식 이후 졸림이나 다운을 해석하기 위한 기록",
+                highCarb: "고탄수 식사 이후 식곤감이나 에너지 흔들림을 보기 위한 기록",
+                sugary: "단 음식이 많아 기분과 에너지 변화를 같이 보기 위한 기록",
+                lateMeal: "야식 다음날 무거움과 수면 질 영향을 보기 위한 기록",
+                skippedMeal: "식사를 거른 날의 예민함과 다운을 보기 위한 기록"
+            };
+
+            if (!d.logs) d.logs = [];
+
+            const entry = {
+                id: Date.now(),
+                time: new Date().toTimeString().slice(0, 5),
+                amount: 0,
+                sugar: 0,
+                name: labelMap[type],
+                mood: 6,
+                note: noteMap[type]
+            };
+            d.logs.push(entry);
+            persistLocalData();
+
+            try {
+                const syncResult = await syncLogToCloud({
+                    type: "entry",
+                    timestamp: entry.id,
+                    text: entry.name,
+                    caffeine: 0,
+                    sugar: 0,
+                    mood: entry.mood,
+                    note: entry.note
+                });
+                if (syncResult.skipped) {
+                    if (!showLoginBenefitPrompt()) {
+                        showAppNotice("식사 영향 요인은 이 기기에 저장됐어요. 로그인하면 클라우드 히스토리와 AI 해석에도 더 안정적으로 반영됩니다.", "info");
+                    }
+                } else {
+                    showAppNotice("식사 영향 요인을 클라우드에 저장했어요.", "success");
+                }
+            } catch (e) {
+                console.error("식사 영향 요인 저장 실패:", e);
+                showAppNotice("식사 영향 요인은 남겼지만 클라우드 저장은 실패했어요.", "error");
+            }
+
+            document.getElementById("mealFactorStatus").innerText = `${labelMap[type]}으로 기록했어요. 오늘 컨디션을 카페인 말고 식사 흐름과 함께 읽어볼게요.`;
             loadDailyData();
             renderHistory();
             renderChart();
