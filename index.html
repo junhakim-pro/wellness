@@ -15,6 +15,8 @@
         .warning-pulse { animation: pulse 1.5s infinite; }
         .insight-card { background: linear-gradient(135deg, #ecfeff 0%, #ecfdf5 100%); }
         .collapsed-copy { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .guide-option { transition: transform 0.15s ease, border-color 0.2s ease, background-color 0.2s ease; }
+        .guide-option:active { transform: scale(0.98); }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
@@ -112,6 +114,24 @@
                     <p id="dailyInsightBody" class="text-xs text-slate-700 leading-relaxed">어제 기록과 오늘 날씨를 참고해서, 아침 목표를 더 현실적으로 잡을 수 있도록 도와드립니다.</p>
                 </div>
 
+                <div class="bg-white border border-slate-200 rounded-[2rem] p-5 shadow-sm">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Morning Quick Check-in</p>
+                            <h3 class="text-base font-black text-slate-900 mt-1">질문 4개로 아침 기록 시작하기</h3>
+                        </div>
+                        <span id="morningGuideProgress" class="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">0 / 4</span>
+                    </div>
+                    <h4 id="morningGuideQuestion" class="text-sm font-black text-slate-900 mb-2">어제 잠은 어땠나요?</h4>
+                    <p id="morningGuideHelper" class="text-xs text-slate-500 leading-relaxed mb-4">느낌대로 하나만 눌러도 다음 질문으로 넘어갑니다.</p>
+                    <div id="morningGuideOptions" class="grid grid-cols-2 gap-3"></div>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="resetMorningGuide()" class="flex-1 bg-slate-100 text-slate-700 font-black py-3 rounded-2xl btn-active text-sm">다시 선택</button>
+                        <button onclick="toggleMorningAdvanced()" class="flex-1 bg-white border border-slate-200 text-slate-900 font-black py-3 rounded-2xl btn-active text-sm">세부 항목 직접 조정</button>
+                    </div>
+                    <p id="morningGuideSummary" class="text-[11px] text-slate-500 leading-relaxed mt-3">잘 맞는 답부터 빠르게 고른 뒤, 필요할 때만 아래 세부 항목을 직접 조정하세요.</p>
+                </div>
+
                 <div class="bg-slate-100 border border-slate-200 rounded-2xl p-4 shadow-inner">
                     <h3 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Yesterday Performance</h3>
                     <div id="yesterdaySummary" class="grid grid-cols-2 gap-3 text-xs text-slate-700 font-bold italic"></div>
@@ -144,12 +164,20 @@
                     </div>
                 </div>
 
+                <div id="morningAdvancedFields" class="space-y-3 hidden">
+                <div class="flex items-center justify-between">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.18em]">Advanced Adjustments</p>
+                    <button onclick="toggleMorningAdvanced()" class="text-[11px] font-black text-emerald-600">접기</button>
+                </div>
+
                 <div class="grid grid-cols-2 gap-3">
                     <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                         <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Sleep Time</label>
                         <select id="sleep" class="w-full bg-transparent text-lg font-black text-emerald-600 focus:outline-none border-none">
+                            <option value="4">4.0h</option>
+                            <option value="5">5.0h</option>
                             <option value="6">6.0h</option><option value="7" selected>7.0h</option>
-                            <option value="7.5">7.5h</option><option value="8">8.0h</option>
+                            <option value="7.5">7.5h</option><option value="8">8.0h</option><option value="9">9.0h</option>
                         </select>
                     </div>
                     <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
@@ -200,6 +228,7 @@
 
                 <textarea id="note" rows="2" class="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm focus:outline-none" placeholder="오늘의 컨디션이나 특이사항을 적어주세요."></textarea>
                 <button onclick="saveMorningData()" class="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl btn-active transition text-base">아침 컨디션 기록 · 금일 목표 설정 완료 🌅</button>
+                </div>
 
                 <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4">
                     <h3 class="text-[10px] font-black text-amber-700 uppercase tracking-[0.2em] mb-2">Current Scope</h3>
@@ -332,18 +361,18 @@
         </main>
     </div>
 
-    <div id="modal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-[100] p-4">
+        <div id="modal" class="modal opacity-0 pointer-events-none fixed inset-0 flex items-center justify-center z-[100] p-4">
         <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onclick="toggleModal()"></div>
         <div class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl z-[101] overflow-hidden flex flex-col p-8 text-center">
-            <h2 class="text-xl font-black text-emerald-600 mb-4 italic">"Know Your Own Pattern."</h2>
+            <h2 class="text-xl font-black text-emerald-600 mb-4 italic">"Start Simple. Learn Your Pattern."</h2>
             <div class="text-xs text-slate-600 leading-relaxed space-y-3 text-left">
-                <p><strong>이 서비스의 목적</strong><br>커피를 무조건 참는 앱이 아니라, 내가 카페인과 당분, 수면에 어떻게 반응하는지 이해하기 위한 기록장입니다.</p>
-                <p><strong>아침 리포트</strong><br>수면 시간, 기분, 워치 데이터, 오늘 목표를 적으면서 어제 무엇이 좋았고 나빴는지 떠올려보세요.</p>
-                <p><strong>음료 기록</strong><br>일반 커피, 디카페인, 차, 무카페인 음료를 나누어 기록하고 당분과 현재 몸 상태도 함께 남길 수 있습니다.</p>
-                <p><strong>현재 범위</strong><br>지금은 모든 식단을 다 추적하지 않고, 먼저 수면과 카페인 반응을 읽는 데 집중합니다.</p>
-                <p><strong>장기 목표</strong><br>기록이 쌓이면, 어떤 날 컨디션이 좋았는지와 어떤 선택이 나와 잘 맞는지 더 긴 흐름으로 볼 수 있습니다.</p>
+                <p><strong>1. 아침에는 질문 4개만</strong><br>잠을 잘 잤는지, 얼마나 잤는지, 오늘 카페인과 당류 목표를 어떻게 가져갈지만 먼저 고르세요.</p>
+                <p><strong>2. 음료 직후엔 음료+상태 기록</strong><br>커피, 차, 디카페인, 당류 수준과 현재 기분을 함께 남기면 반응을 읽기 쉬워집니다.</p>
+                <p><strong>3. 몇 시간 뒤 컨디션만 변해도 기록</strong><br>꼭 음료를 마신 직후가 아니어도, 갑자기 다운되거나 두근거릴 때는 상태만 기록해도 됩니다.</p>
+                <p><strong>4. 빠른 한 줄 기록도 가능</strong><br>예: "10:30 아메리카노 한잔", "15시 갑자기 두근거림"처럼 적어도 오늘 타임라인에 쌓입니다.</p>
+                <p><strong>핵심 목적</strong><br>커피를 참게 하는 앱이 아니라, 내 몸이 수면·카페인·당분에 어떻게 반응하는지 이해하는 기록장입니다.</p>
             </div>
-            <button onclick="toggleModal()" class="w-full bg-emerald-600 text-white mt-6 py-4 rounded-xl font-black text-sm">기록 시작하기</button>
+            <button onclick="acknowledgeTutorial()" class="w-full bg-emerald-600 text-white mt-6 py-4 rounded-xl font-black text-sm">가이드 확인하고 시작하기</button>
         </div>
     </div>
 
@@ -351,6 +380,52 @@
         const ALIBABA_URL = "https://wellnesot-brain-unwrkhiccv.ap-northeast-2.fcapp.run";
         let allData = JSON.parse(localStorage.getItem("wellnessData")) || {};
         let chartInstance = null;
+        const MORNING_GUIDE_STEPS = [
+            {
+                key: "quickSleepQuality",
+                question: "어제 잠은 어땠나요?",
+                helper: "느낌 기준으로 하나만 고르면 다음 질문으로 넘어갑니다.",
+                options: [
+                    { value: "great", label: "잘 잤어요", note: "몸이 가볍고 개운함" },
+                    { value: "okay", label: "그냥 그래요", note: "무난한 편" },
+                    { value: "poor", label: "별로예요", note: "조금 피곤함" },
+                    { value: "bad", label: "안 좋았어요", note: "아침부터 무거움" }
+                ]
+            },
+            {
+                key: "quickSleepBand",
+                question: "총 몇 시간 정도 잤나요?",
+                helper: "대략적인 구간만 골라도 충분합니다.",
+                options: [
+                    { value: "under4", label: "4시간 미만", note: "매우 부족" },
+                    { value: "fiveSix", label: "5-6시간", note: "조금 부족" },
+                    { value: "sevenEight", label: "7-8시간", note: "무난함" },
+                    { value: "ninePlus", label: "9시간 이상", note: "충분히 잠" }
+                ]
+            },
+            {
+                key: "quickCaffeinePlan",
+                question: "오늘 카페인 목표는 어떻게 가져갈까요?",
+                helper: "오늘 컨디션에 맞는 최대 한도를 정해보세요.",
+                options: [
+                    { value: "0", label: "오늘은 안 마시기", note: "완전 리셋" },
+                    { value: "150", label: "커피 한 잔만", note: "기본 한도" },
+                    { value: "300", label: "상황 봐서 두 잔", note: "조금 여유 있게" },
+                    { value: "450", label: "최대 한도까지", note: "긴 하루 대비" }
+                ]
+            },
+            {
+                key: "quickSugarPlan",
+                question: "오늘 당류 목표는 어느 정도로 볼까요?",
+                helper: "주스, 달달한 음료, 디저트까지 생각해보면 좋아요.",
+                options: [
+                    { value: "0", label: "거의 안 먹기", note: "당류 최소화" },
+                    { value: "15", label: "주스 한 잔 정도", note: "가볍게" },
+                    { value: "30", label: "보통 수준", note: "기본 추천" },
+                    { value: "50", label: "여유 있게", note: "간식 포함" }
+                ]
+            }
+        ];
 
         function persistLocalData() {
             localStorage.setItem("wellnessData", JSON.stringify(allData));
@@ -371,6 +446,21 @@
             if (localStorage.getItem(key) === "1") return;
             localStorage.setItem(key, "1");
             alert("지금은 이 기기 안에만 저장됩니다.\n텔레그램 로그인하면 기록이 클라우드에도 저장되어 다른 기기에서도 이어서 볼 수 있어요.");
+        }
+
+        function ensureDateEntry(date) {
+            if (!allData[date]) allData[date] = { logs: [] };
+            return allData[date];
+        }
+
+        function getMorningGuideAnswers(date) {
+            const d = allData[date] || {};
+            return {
+                quickSleepQuality: d.quickSleepQuality || "",
+                quickSleepBand: d.quickSleepBand || "",
+                quickCaffeinePlan: d.quickCaffeinePlan || "",
+                quickSugarPlan: d.quickSugarPlan || ""
+            };
         }
 
         function getInsightCacheKey(type, dateStr, userId) {
@@ -522,6 +612,101 @@
             document.getElementById("feedbackCategory").value = category;
             document.querySelectorAll(".feedback-btn").forEach(b => b.classList.remove("selected-item"));
             btn.classList.add("selected-item");
+        }
+
+        function toggleMorningAdvanced(forceOpen) {
+            const section = document.getElementById("morningAdvancedFields");
+            if (!section) return;
+            const shouldShow = typeof forceOpen === "boolean" ? forceOpen : section.classList.contains("hidden");
+            section.classList.toggle("hidden", !shouldShow);
+        }
+
+        function acknowledgeTutorial() {
+            localStorage.setItem("wellness_tutorial_seen", "1");
+            toggleModal(false);
+        }
+
+        function selectMorningGuideOption(stepKey, value) {
+            const date = document.getElementById("targetDate").value;
+            const d = ensureDateEntry(date);
+            d[stepKey] = value;
+
+            if (stepKey === "quickSleepQuality") {
+                const moodMap = { great: 9, okay: 7, poor: 5, bad: 3 };
+                document.getElementById("mood").value = moodMap[value];
+            }
+
+            if (stepKey === "quickSleepBand") {
+                const sleepMap = { under4: "4", fiveSix: "6", sevenEight: "7.5", ninePlus: "9" };
+                document.getElementById("sleep").value = sleepMap[value];
+            }
+
+            if (stepKey === "quickCaffeinePlan") {
+                document.getElementById("caffeineGoal").value = value;
+            }
+
+            if (stepKey === "quickSugarPlan") {
+                document.getElementById("sugarGoal").value = value;
+            }
+
+            persistLocalData();
+            renderMorningGuide();
+            updateProgressBars();
+            updateDailyInsight();
+        }
+
+        function resetMorningGuide() {
+            const date = document.getElementById("targetDate").value;
+            const d = ensureDateEntry(date);
+            delete d.quickSleepQuality;
+            delete d.quickSleepBand;
+            delete d.quickCaffeinePlan;
+            delete d.quickSugarPlan;
+            persistLocalData();
+            renderMorningGuide();
+        }
+
+        function renderMorningGuide() {
+            const date = document.getElementById("targetDate").value;
+            const answers = getMorningGuideAnswers(date);
+            const completed = Object.values(answers).filter(Boolean).length;
+            const progress = document.getElementById("morningGuideProgress");
+            const question = document.getElementById("morningGuideQuestion");
+            const helper = document.getElementById("morningGuideHelper");
+            const options = document.getElementById("morningGuideOptions");
+            const summary = document.getElementById("morningGuideSummary");
+
+            progress.innerText = `${completed} / ${MORNING_GUIDE_STEPS.length}`;
+
+            const nextStep = MORNING_GUIDE_STEPS.find((step) => !answers[step.key]);
+
+            if (!nextStep) {
+                question.innerText = "좋아요, 아침 체크인이 거의 끝났어요";
+                helper.innerText = "지금 아래 세부 항목은 필요할 때만 조정하면 됩니다.";
+                options.innerHTML = `
+                    <div class="col-span-2 rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-left">
+                        <div class="text-sm font-black text-slate-900">오늘 계획 요약</div>
+                        <div class="text-xs text-slate-600 leading-relaxed mt-2">
+                            수면 감각: ${answers.quickSleepQuality || "-"} · 수면 구간: ${answers.quickSleepBand || "-"}<br>
+                            카페인 목표: ${document.getElementById("caffeineGoal").value}mg · 당류 목표: ${document.getElementById("sugarGoal").value}g
+                        </div>
+                    </div>
+                `;
+                summary.innerText = "이제 바로 저장하거나, 워치 데이터와 메모만 살짝 보정하면 충분합니다.";
+                return;
+            }
+
+            question.innerText = nextStep.question;
+            helper.innerText = nextStep.helper;
+            options.innerHTML = nextStep.options.map((option) => `
+                <button type="button" onclick="selectMorningGuideOption('${nextStep.key}', '${option.value}')" class="guide-option text-left rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="text-sm font-black text-slate-900">${option.label}</div>
+                    <div class="text-[11px] text-slate-500 mt-2">${option.note}</div>
+                </button>
+            `).join("");
+            summary.innerText = completed === 0
+                ? "드롭다운을 하나씩 고르기 전에, 먼저 이 네 질문으로 오늘 기준선을 빠르게 정해보세요."
+                : "좋아요. 지금처럼 느낌 위주로 고르면 아래 입력칸을 일일이 만질 필요가 많이 줄어듭니다.";
         }
 
         function toggleWhyCard() {
@@ -773,6 +958,11 @@
                 await loadCloudData(savedId);
             } else {
                 console.log("로그인이 필요합니다. 텔레그램 버튼을 눌러주세요.");
+                loadDailyData();
+            }
+
+            if (!localStorage.getItem("wellness_tutorial_seen")) {
+                toggleModal(true);
             }
         };
 
@@ -899,6 +1089,7 @@
             loadYesterdaySummary(date);
             updateProgressBars();
             updateDailyInsight();
+            renderMorningGuide();
             renderOverviewCards();
             renderTodayTimeline();
             renderWeeklyOverview();
@@ -1139,10 +1330,13 @@
             });
         }
 
-        function toggleModal() {
+        function toggleModal(forceOpen) {
             const m = document.getElementById("modal");
-            m.classList.toggle("opacity-0");
-            m.classList.toggle("pointer-events-none");
+            const shouldOpen = typeof forceOpen === "boolean"
+                ? forceOpen
+                : m.classList.contains("opacity-0");
+            m.classList.toggle("opacity-0", !shouldOpen);
+            m.classList.toggle("pointer-events-none", !shouldOpen);
         }
 
         function exportData() {
