@@ -76,11 +76,11 @@
                     <span class="text-[10px] font-black px-2 py-1 rounded-full bg-white/10">MVP</span>
                 </div>
                 <div class="space-y-3">
-                    <input id="quickCaptureInput" class="w-full rounded-2xl bg-white/10 border border-white/10 px-4 py-4 text-sm text-white placeholder:text-slate-400 focus:outline-none" placeholder="예: 10:30 아메리카노 한잔, 15시 갑자기 두근거림, 디카페인 라떼 마심">
+                    <input id="quickCaptureInput" class="w-full rounded-2xl bg-white/10 border border-white/10 px-4 py-4 text-sm text-white placeholder:text-slate-400 focus:outline-none" placeholder="예: 10:30 아메리카노 한잔, 점심 뒤 아메리카노, 갑자기 기분이 다운됨">
                     <div class="flex flex-wrap gap-2">
                         <button onclick="applyQuickExample('10:30 아메리카노 한잔')" class="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black text-white/90 btn-active">아메리카노 한잔</button>
-                        <button onclick="applyQuickExample('점심 뒤 콜라 마심')" class="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black text-white/90 btn-active">점심 뒤 콜라</button>
-                        <button onclick="applyQuickExample('15시 갑자기 두근거림')" class="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black text-white/90 btn-active">갑자기 두근거림</button>
+                        <button onclick="applyQuickExample('점심 뒤 아메리카노 한잔')" class="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black text-white/90 btn-active">점심 뒤 아메리카노</button>
+                        <button onclick="applyQuickExample('갑자기 기분이 다운됨')" class="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-black text-white/90 btn-active">갑자기 기분 다운</button>
                     </div>
                     <div class="flex gap-2">
                         <button onclick="saveQuickCapture()" class="flex-1 bg-emerald-500 text-slate-950 font-black py-3 rounded-2xl btn-active">빠른 기록 저장</button>
@@ -397,7 +397,7 @@
                 <p><strong>1. 아침에는 질문 4개만</strong><br>잠을 잘 잤는지, 얼마나 잤는지, 오늘 카페인과 당류 목표를 어떻게 가져갈지만 먼저 고르세요.</p>
                 <p><strong>2. 음료 직후엔 음료+상태 기록</strong><br>커피, 차, 디카페인, 당류 수준과 현재 기분을 함께 남기면 반응을 읽기 쉬워집니다.</p>
                 <p><strong>3. 몇 시간 뒤 컨디션만 변해도 기록</strong><br>꼭 음료를 마신 직후가 아니어도, 갑자기 다운되거나 두근거릴 때는 상태만 기록해도 됩니다.</p>
-                <p><strong>4. 빠른 한 줄 기록도 가능</strong><br>예: "10:30 아메리카노 한잔", "15시 갑자기 두근거림"처럼 적어도 오늘 타임라인에 쌓입니다.</p>
+                <p><strong>4. 빠른 한 줄 기록도 가능</strong><br>예: "10:30 아메리카노 한잔", "갑자기 기분이 다운됨"처럼 적어도 오늘 타임라인에 쌓입니다.</p>
                 <p><strong>핵심 목적</strong><br>커피를 참게 하는 앱이 아니라, 내 몸이 수면·카페인·당분에 어떻게 반응하는지 이해하는 기록장입니다.</p>
             </div>
             <button onclick="acknowledgeTutorial()" class="w-full bg-emerald-600 text-white mt-6 py-4 rounded-xl font-black text-sm">가이드 확인하고 시작하기</button>
