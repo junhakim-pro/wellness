@@ -67,6 +67,11 @@ def fetch_user_rows(user_id):
                 "exercise": attr.get("exercise", ""),
                 "alcohol": attr.get("alcohol", ""),
                 "nap": attr.get("nap", ""),
+                "quickSleepQuality": attr.get("quickSleepQuality", ""),
+                "quickSleepBand": attr.get("quickSleepBand", ""),
+                "quickCaffeinePlan": attr.get("quickCaffeinePlan", ""),
+                "quickSugarPlan": attr.get("quickSugarPlan", ""),
+                "quickAlcoholImpact": attr.get("quickAlcoholImpact", ""),
                 "feedbackCategory": attr.get("feedbackCategory", ""),
             }
         )
@@ -318,6 +323,11 @@ def save_web_log():
                     ("exercise", data.get("exercise", "")),
                     ("alcohol", data.get("alcohol", "")),
                     ("nap", data.get("nap", "")),
+                    ("quickSleepQuality", data.get("quickSleepQuality", "")),
+                    ("quickSleepBand", data.get("quickSleepBand", "")),
+                    ("quickCaffeinePlan", data.get("quickCaffeinePlan", "")),
+                    ("quickSugarPlan", data.get("quickSugarPlan", "")),
+                    ("quickAlcoholImpact", data.get("quickAlcoholImpact", "")),
                 ]
             )
         elif log_type == "feedback":

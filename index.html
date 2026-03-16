@@ -510,6 +510,14 @@
             return payload.night_greeting;
         }
 
+        function getDefaultGreeting(hour) {
+            const userName = localStorage.getItem("telegram_user_name");
+            if (hour >= 5 && hour < 12) return userName ? `${userName}님, 좋은 아침이에요 🌅` : "좋은 아침이에요 🌅";
+            if (hour >= 12 && hour < 18) return userName ? `${userName}님, 오후 리듬을 잘 챙겨봐요 ☕` : "오후 리듬을 잘 챙겨봐요 ☕";
+            if (hour >= 18 && hour < 22) return userName ? `${userName}님, 오늘 흐름을 가볍게 돌아봐요 🌙` : "오늘 흐름을 가볍게 돌아봐요 🌙";
+            return userName ? `${userName}님, 오늘 하루도 천천히 마무리해봐요 ✨` : "오늘 하루도 천천히 마무리해봐요 ✨";
+        }
+
         function getTelegramUserId() {
             return localStorage.getItem("telegram_user_id");
         }
@@ -1098,7 +1106,15 @@
                             sugarGoal: item.sugarGoal !== null && item.sugarGoal !== undefined ? item.sugarGoal : 30,
                             sleepScore: item.sleepScore || "",
                             rhr: item.rhr || "",
-                            note: item.note || ""
+                            note: item.note || "",
+                            exercise: item.exercise || "none",
+                            alcohol: item.alcohol || "none",
+                            nap: item.nap || "none",
+                            quickSleepQuality: item.quickSleepQuality || "",
+                            quickSleepBand: item.quickSleepBand || "",
+                            quickCaffeinePlan: item.quickCaffeinePlan || "",
+                            quickSugarPlan: item.quickSugarPlan || "",
+                            quickAlcoholImpact: item.quickAlcoholImpact || ""
                         });
                         return;
                     }
@@ -1157,12 +1173,7 @@
             const desc = document.getElementById("weather-desc");
             const temp = document.getElementById("temp-display");
             const hour = new Date().getHours();
-            const userName = localStorage.getItem("telegram_user_name") || "사용자님";
-            let msg = `${userName}님, 오늘도 반가워요!`;
-            if (hour >= 5 && hour < 12) msg = `${userName}님, 좋은 아침이에요 🌅`;
-            else if (hour >= 12 && hour < 18) msg = `${userName}님, 오후 리듬을 잘 챙겨봐요 ☕`;
-            else if (hour >= 18 && hour < 22) msg = `${userName}님, 오늘 흐름을 가볍게 돌아봐요 🌙`;
-            else msg = `${userName}님, 오늘 하루도 천천히 마무리해봐요 ✨`;
+            const msg = getDefaultGreeting(hour);
             if (greet) greet.innerText = msg;
             try {
                 const res = await fetch("https://wttr.in/Seoul?format=j1");
@@ -1261,6 +1272,7 @@
         async function saveMorningData() {
             const date = document.getElementById("targetDate").value;
             if (!allData[date]) allData[date] = { logs: [] };
+            const guideAnswers = getMorningGuideAnswers(date);
             const morningPayload = {
                 sleep: Number(document.getElementById("sleep").value),
                 mood: Number(document.getElementById("mood").value),
@@ -1271,7 +1283,12 @@
                 exercise: document.getElementById("exercise").value,
                 alcohol: document.getElementById("alcohol").value,
                 nap: document.getElementById("nap").value,
-                note: document.getElementById("note").value
+                note: document.getElementById("note").value,
+                quickSleepQuality: guideAnswers.quickSleepQuality,
+                quickSleepBand: guideAnswers.quickSleepBand,
+                quickCaffeinePlan: guideAnswers.quickCaffeinePlan,
+                quickSugarPlan: guideAnswers.quickSugarPlan,
+                quickAlcoholImpact: guideAnswers.quickAlcoholImpact
             };
 
             Object.assign(allData[date], morningPayload);
