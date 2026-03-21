@@ -407,6 +407,36 @@
                     인앱 피드백 남기기 🎤
                 </button>
             </div>
+
+            <section id="adminUsagePanel" class="hidden mt-10 mb-6 rounded-[2.5rem] border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                <div class="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                        <p class="text-[10px] font-black text-amber-700 uppercase tracking-[0.22em]">Admin Usage</p>
+                        <h4 class="text-base font-black text-slate-900 mt-1">AI / 클라우드 사용량 추정</h4>
+                        <p class="text-xs text-slate-600 leading-relaxed mt-2">관리자 키가 있어야만 조회됩니다. AI 토큰과 요청 수 기준으로 예상 비용을 빠르게 확인하는 용도입니다.</p>
+                    </div>
+                    <span class="text-[10px] font-black px-2 py-1 rounded-full bg-white text-amber-700 border border-amber-200">ADMIN</span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button onclick="promptAdminUsageKey()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-[11px] font-black btn-active">관리자 키 입력</button>
+                    <button onclick="loadAdminUsageSummary()" class="bg-white text-slate-800 border border-slate-200 px-4 py-2 rounded-xl text-[11px] font-black btn-active">새로고침</button>
+                    <button onclick="clearAdminUsageKey()" class="bg-white text-rose-600 border border-rose-200 px-4 py-2 rounded-xl text-[11px] font-black btn-active">키 삭제</button>
+                </div>
+                <p id="adminUsageStatus" class="text-[11px] text-slate-600 leading-relaxed mb-4">?admin=1로 접속한 뒤 관리자 키를 입력하면 최근 24시간, 7일, 전체 사용량을 볼 수 있습니다.</p>
+                <div class="grid grid-cols-1 gap-3 mb-4">
+                    <div id="adminUsage24h" class="bg-white rounded-3xl border border-slate-200 p-4 text-xs text-slate-700 leading-relaxed"></div>
+                    <div id="adminUsage7d" class="bg-white rounded-3xl border border-slate-200 p-4 text-xs text-slate-700 leading-relaxed"></div>
+                    <div id="adminUsageAll" class="bg-white rounded-3xl border border-slate-200 p-4 text-xs text-slate-700 leading-relaxed"></div>
+                </div>
+                <div class="bg-white rounded-3xl border border-slate-200 p-4">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.22em]">Recent Events</p>
+                        <span id="adminUsageModel" class="text-[10px] font-black px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">-</span>
+                    </div>
+                    <div id="adminUsageEvents" class="space-y-2 text-[11px] text-slate-600 leading-relaxed"></div>
+                    <div id="adminUsageNotes" class="mt-3 text-[10px] text-slate-500 leading-relaxed"></div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -427,6 +457,7 @@
 
     <script>
         const ALIBABA_URL = "https://wellnesot-brain-unwrkhiccv.ap-northeast-2.fcapp.run";
+        const ADMIN_USAGE_KEY_STORAGE = "wellness_admin_usage_key";
         let allData = JSON.parse(localStorage.getItem("wellnessData")) || {};
         let chartInstance = null;
         const MORNING_GUIDE_STEPS = [
@@ -554,6 +585,131 @@
 
         function getBannerCacheKey(dateStr, userId) {
             return `aiBanner:${userId}:${dateStr}`;
+        }
+
+        function isAdminMode() {
+            return new URLSearchParams(window.location.search).get("admin") === "1";
+        }
+
+        function getAdminUsageKey() {
+            return localStorage.getItem(ADMIN_USAGE_KEY_STORAGE) || "";
+        }
+
+        function setAdminUsageKey(key) {
+            localStorage.setItem(ADMIN_USAGE_KEY_STORAGE, key);
+        }
+
+        function clearAdminUsageKey() {
+            localStorage.removeItem(ADMIN_USAGE_KEY_STORAGE);
+            const status = document.getElementById("adminUsageStatus");
+            if (status) {
+                status.innerText = "관리자 키를 지웠습니다. 다시 조회하려면 키를 다시 입력해주세요.";
+            }
+            showAppNotice("관리자 키를 이 기기에서 삭제했어요.", "info");
+        }
+
+        function formatAdminUsd(value) {
+            const amount = Number(value || 0);
+            return `$${amount.toFixed(amount >= 1 ? 2 : 4)}`;
+        }
+
+        function formatAdminBucket(title, bucket) {
+            if (!bucket) return `<p class="font-black text-slate-900">${title}</p><p class="mt-2">데이터가 없습니다.</p>`;
+
+            return `
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.22em]">${title}</p>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    <div class="rounded-2xl bg-slate-50 p-3">
+                        <p class="text-[10px] text-slate-400 font-black uppercase">예상 총비용</p>
+                        <p class="text-base font-black text-slate-900 mt-1">${formatAdminUsd(bucket.estimatedTotalCostUsd)}</p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 p-3">
+                        <p class="text-[10px] text-slate-400 font-black uppercase">AI 비용</p>
+                        <p class="text-base font-black text-slate-900 mt-1">${formatAdminUsd(bucket.estimatedAiCostUsd)}</p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 p-3">
+                        <p class="text-[10px] text-slate-400 font-black uppercase">AI 호출</p>
+                        <p class="text-base font-black text-slate-900 mt-1">${bucket.aiCallCount}회</p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 p-3">
+                        <p class="text-[10px] text-slate-400 font-black uppercase">전체 요청</p>
+                        <p class="text-base font-black text-slate-900 mt-1">${bucket.requestCount}회</p>
+                    </div>
+                </div>
+                <p class="mt-3">입력 토큰 ${bucket.promptTokens.toLocaleString()} / 출력 토큰 ${bucket.completionTokens.toLocaleString()} / 합계 ${bucket.totalTokens.toLocaleString()}</p>
+                <p class="mt-1">저장 write ${bucket.tableWriteCount.toLocaleString()}건 / 함수 요청 비용 추정 ${formatAdminUsd(bucket.estimatedFunctionRequestCostUsd)}</p>
+            `;
+        }
+
+        function renderAdminUsageSummary(summary) {
+            document.getElementById("adminUsage24h").innerHTML = formatAdminBucket("Last 24h", summary.last24h);
+            document.getElementById("adminUsage7d").innerHTML = formatAdminBucket("Last 7d", summary.last7d);
+            document.getElementById("adminUsageAll").innerHTML = formatAdminBucket("All Time", summary.allTime);
+            document.getElementById("adminUsageModel").innerText = summary.model || "-";
+
+            const eventLines = (summary.latestEvents || []).map(item => {
+                const when = new Date(item.timestamp).toLocaleString("ko-KR", { hour12: false });
+                const detail = item.eventType === "ai_call"
+                    ? `${item.endpoint} · 토큰 ${Number(item.totalTokens || 0).toLocaleString()} · ${formatAdminUsd(item.estimatedCostUsd)}`
+                    : `${item.endpoint} · ${item.requestKind || item.logType || item.eventType}`;
+                return `<div class="rounded-2xl bg-slate-50 px-3 py-2"><strong class="text-slate-800">${when}</strong><div class="mt-1">${detail}</div></div>`;
+            });
+            document.getElementById("adminUsageEvents").innerHTML = eventLines.length ? eventLines.join("") : "<p>아직 집계된 이벤트가 없습니다.</p>";
+
+            const notes = (summary.notes || []).map(note => `<p>• ${note}</p>`).join("");
+            document.getElementById("adminUsageNotes").innerHTML = `
+                <p>요율 기준: 입력 100만 토큰당 ${formatAdminUsd(summary.pricing?.aiInputCostPerMillionTokensUsd)} / 출력 100만 토큰당 ${formatAdminUsd(summary.pricing?.aiOutputCostPerMillionTokensUsd)}</p>
+                <p>함수 요청 100만 건당 ${formatAdminUsd(summary.pricing?.functionRequestCostPerMillionUsd)}</p>
+                ${notes}
+            `;
+
+            const generatedAt = summary.generatedAt ? new Date(summary.generatedAt).toLocaleString("ko-KR", { hour12: false }) : "방금";
+            document.getElementById("adminUsageStatus").innerText = `마지막 집계 시각: ${generatedAt}`;
+        }
+
+        async function loadAdminUsageSummary(forcePrompt = false) {
+            if (!isAdminMode()) return;
+
+            const panel = document.getElementById("adminUsagePanel");
+            const status = document.getElementById("adminUsageStatus");
+            if (panel) panel.classList.remove("hidden");
+
+            let adminKey = getAdminUsageKey();
+            if (!adminKey || forcePrompt) {
+                adminKey = window.prompt("관리자 usage 조회 키를 입력하세요.");
+                if (!adminKey) {
+                    if (status) status.innerText = "관리자 키를 입력해야 usage/cost 요약을 조회할 수 있습니다.";
+                    return;
+                }
+                setAdminUsageKey(adminKey.trim());
+                adminKey = adminKey.trim();
+            }
+
+            if (status) status.innerText = "관리자 usage 요약을 불러오는 중입니다...";
+
+            try {
+                const response = await fetch(`${ALIBABA_URL}/api/admin/usage-summary`, {
+                    headers: {
+                        "X-Admin-Key": adminKey
+                    }
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        localStorage.removeItem(ADMIN_USAGE_KEY_STORAGE);
+                    }
+                    throw new Error(data.error || "관리자 usage 조회 실패");
+                }
+                renderAdminUsageSummary(data);
+            } catch (e) {
+                console.error("관리자 usage 요약 로딩 실패:", e);
+                if (status) status.innerText = e.message || "관리자 usage 요약을 불러오지 못했습니다.";
+                showAppNotice("관리자 usage 요약을 불러오지 못했어요.", "error");
+            }
+        }
+
+        function promptAdminUsageKey() {
+            loadAdminUsageSummary(true);
         }
 
         function getPendingFeedbackQueue() {
@@ -1348,6 +1504,11 @@
                 if (pendingFeedbackResult.sent > 0) {
                     showAppNotice(`로그인 전 남긴 피드백 ${pendingFeedbackResult.sent}건을 운영자에게 전달했어요.`, "success");
                 }
+            }
+
+            if (isAdminMode()) {
+                document.getElementById("adminUsagePanel").classList.remove("hidden");
+                await loadAdminUsageSummary();
             }
         };
 

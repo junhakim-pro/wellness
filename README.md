@@ -23,6 +23,20 @@ Alibaba Function Compute 환경변수에 아래 값을 넣어야 합니다.
 - `ENDPOINT`
 - `TELEGRAM_TOKEN`
 - `TABLE_NAME`
+- `ADMIN_DASHBOARD_KEY` 관리자 usage 대시보드 조회 키
+
+선택 환경변수:
+
+- `AI_INPUT_COST_PER_MTOKEN` AI 입력 100만 토큰당 USD 단가
+- `AI_OUTPUT_COST_PER_MTOKEN` AI 출력 100만 토큰당 USD 단가
+- `FUNCTION_REQUEST_COST_PER_MILLION` Function Compute 요청 100만 건당 USD 단가
+- `TABLESTORE_WRITE_COST_PER_10K` TableStore write 1만 건당 USD 단가
+- `USAGE_SYSTEM_USER_ID` usage 이벤트를 저장할 시스템 user id (기본값 `__usage__`)
+
+기본값 메모:
+
+- AI 입력/출력 단가는 현재 `qwen-plus`의 일반적인 짧은 요청 구간 기준값으로 잡혀 있습니다.
+- Function Compute 요청 단가는 기본값이 `0`이며, 실제 내부 기준이 있으면 `FUNCTION_REQUEST_COST_PER_MILLION`에 넣어서 켭니다.
 
 현재 사용값 메모:
 
@@ -63,6 +77,21 @@ Alibaba Function Compute 환경변수에 아래 값을 넣어야 합니다.
 4. `app.py` 열기
 5. 로컬의 `app.py` 내용 붙여넣기
 6. `Save & Deploy`
+
+## 관리자 usage / 비용 확인
+
+- 백엔드 환경변수에 `ADMIN_DASHBOARD_KEY`를 넣습니다.
+- `app.py`를 Alibaba Function Compute에 다시 `Save & Deploy` 합니다.
+- GitHub Pages 쪽 `index.html`도 반영합니다.
+- 관리자만 `?admin=1`을 붙여 접속합니다.
+예시: `https://<your-pages-url>/?admin=1`
+- 화면 하단의 Admin Usage 카드에서 관리자 키를 입력하면 최근 24시간 / 7일 / 전체 기준 사용량과 예상 비용을 볼 수 있습니다.
+
+주의:
+
+- AI 비용은 실제 응답 토큰 usage 기준 추정치입니다.
+- Function Compute 비용은 현재 요청 수 기준 추정만 포함합니다. 실행 시간, 네트워크 등은 별도 계산이 필요할 수 있습니다.
+- TableStore 비용은 `TABLESTORE_WRITE_COST_PER_10K`를 넣은 경우에만 총 비용 추정에 반영됩니다.
 
 ## 테스트 방법
 

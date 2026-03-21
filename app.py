@@ -20,6 +20,27 @@ QWEN_BASE_URL = os.environ.get(
     "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
 )
 ADMIN_TELEGRAM_CHAT_ID = os.environ.get("ADMIN_TELEGRAM_CHAT_ID", "")
+ADMIN_DASHBOARD_KEY = os.environ.get("ADMIN_DASHBOARD_KEY", "")
+USAGE_SYSTEM_USER_ID = os.environ.get("USAGE_SYSTEM_USER_ID", "__usage__")
+
+
+def get_env_float(name, default):
+    raw = os.environ.get(name)
+    if raw in (None, ""):
+        return default
+
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+AI_INPUT_COST_PER_MTOKEN = get_env_float("AI_INPUT_COST_PER_MTOKEN", 0.115)
+AI_OUTPUT_COST_PER_MTOKEN = get_env_float("AI_OUTPUT_COST_PER_MTOKEN", 0.287)
+FUNCTION_REQUEST_COST_PER_MILLION = get_env_float(
+    "FUNCTION_REQUEST_COST_PER_MILLION", 0.0
+)
+TABLESTORE_WRITE_COST_PER_10K = get_env_float("TABLESTORE_WRITE_COST_PER_10K", 0.0)
 
 client = OTSClient(ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, INSTANCE_NAME)
 
@@ -35,6 +56,176 @@ def json_response(payload, status=200):
     resp = make_response(json.dumps(payload, ensure_ascii=False), status)
     resp.headers["Content-Type"] = "application/json; charset=utf-8"
     return add_cors_headers(resp)
+
+
+def estimate_ai_cost_usd(prompt_tokens, completion_tokens):
+    prompt_cost = (prompt_tokens / 1000000) * AI_INPUT_COST_PER_MTOKEN
+    completion_cost = (completion_tokens / 1000000) * AI_OUTPUT_COST_PER_MTOKEN
+    return round(prompt_cost + completion_cost, 6)
+
+
+def estimate_function_request_cost_usd(request_count):
+    return round((request_count / 1000000) * FUNCTION_REQUEST_COST_PER_MILLION, 6)
+
+
+def estimate_tablestore_write_cost_usd(write_count):
+    if TABLESTORE_WRITE_COST_PER_10K <= 0:
+        return 0.0
+    return round((write_count / 10000) * TABLESTORE_WRITE_COST_PER_10K, 6)
+
+
+def get_usage_meta(payload):
+    usage = payload.get("usage") or {}
+    prompt_tokens = int(
+        usage.get("prompt_tokens")
+        or usage.get("input_tokens")
+        or usage.get("promptTokens")
+        or 0
+    )
+    completion_tokens = int(
+        usage.get("completion_tokens")
+        or usage.get("output_tokens")
+        or usage.get("completionTokens")
+        or 0
+    )
+    total_tokens = int(
+        usage.get("total_tokens") or usage.get("totalTokens") or prompt_tokens + completion_tokens
+    )
+    return {
+        "promptTokens": prompt_tokens,
+        "completionTokens": completion_tokens,
+        "totalTokens": total_tokens,
+        "estimatedCostUsd": estimate_ai_cost_usd(prompt_tokens, completion_tokens),
+    }
+
+
+def record_usage_event(event_type, endpoint, **attrs):
+    timestamp = int(time.time() * 1000)
+    pk = [("uswer_id", USAGE_SYSTEM_USER_ID), ("timestamp", timestamp)]
+    cols = [
+        ("type", "usage_event"),
+        ("eventType", event_type),
+        ("endpoint", endpoint),
+    ]
+
+    for key, value in attrs.items():
+        if value is None:
+            continue
+        cols.append((key, value))
+
+    client.put_row(TABLE_NAME, Row(pk, cols))
+
+
+def fetch_usage_rows():
+    inclusive_start_pk = [("uswer_id", USAGE_SYSTEM_USER_ID), ("timestamp", 0)]
+    exclusive_end_pk = [("uswer_id", USAGE_SYSTEM_USER_ID), ("timestamp", 2000000000000)]
+    _, _, row_list, _ = client.get_range(
+        TABLE_NAME,
+        "FORWARD",
+        inclusive_start_pk,
+        exclusive_end_pk,
+    )
+
+    results = []
+    for row in row_list:
+        attr = {col[0]: col[1] for col in row.attribute_columns}
+        results.append(
+            {
+                "timestamp": row.primary_key[1][1],
+                "eventType": attr.get("eventType", ""),
+                "endpoint": attr.get("endpoint", ""),
+                "requestKind": attr.get("requestKind", ""),
+                "logType": attr.get("logType", ""),
+                "model": attr.get("model", ""),
+                "promptTokens": int(attr.get("promptTokens", 0) or 0),
+                "completionTokens": int(attr.get("completionTokens", 0) or 0),
+                "totalTokens": int(attr.get("totalTokens", 0) or 0),
+                "estimatedCostUsd": float(attr.get("estimatedCostUsd", 0) or 0),
+                "durationMs": int(attr.get("durationMs", 0) or 0),
+                "tableWrites": int(attr.get("tableWrites", 0) or 0),
+                "requestCount": int(attr.get("requestCount", 0) or 0),
+                "status": attr.get("status", ""),
+            }
+        )
+
+    return results
+
+
+def summarize_usage_rows(rows, now_ms):
+    def build_bucket(window_ms=None):
+        selected = []
+        for item in rows:
+            if window_ms is None or now_ms - item["timestamp"] <= window_ms:
+                selected.append(item)
+
+        request_count = sum(item.get("requestCount", 0) for item in selected)
+        ai_calls = sum(1 for item in selected if item.get("eventType") == "ai_call")
+        write_events = sum(item.get("tableWrites", 0) for item in selected)
+        ai_cost_usd = round(
+            sum(float(item.get("estimatedCostUsd", 0) or 0) for item in selected), 6
+        )
+        return {
+            "requestCount": request_count,
+            "aiCallCount": ai_calls,
+            "tableWriteCount": write_events,
+            "promptTokens": sum(item.get("promptTokens", 0) for item in selected),
+            "completionTokens": sum(
+                item.get("completionTokens", 0) for item in selected
+            ),
+            "totalTokens": sum(item.get("totalTokens", 0) for item in selected),
+            "estimatedAiCostUsd": ai_cost_usd,
+            "estimatedFunctionRequestCostUsd": estimate_function_request_cost_usd(
+                request_count
+            ),
+            "estimatedTableWriteCostUsd": estimate_tablestore_write_cost_usd(
+                write_events
+            ),
+            "estimatedTotalCostUsd": round(
+                ai_cost_usd
+                + estimate_function_request_cost_usd(request_count)
+                + estimate_tablestore_write_cost_usd(write_events),
+                6,
+            ),
+        }
+
+    latest_events = sorted(rows, key=lambda item: item["timestamp"], reverse=True)[:12]
+    return {
+        "last24h": build_bucket(24 * 60 * 60 * 1000),
+        "last7d": build_bucket(7 * 24 * 60 * 60 * 1000),
+        "allTime": build_bucket(None),
+        "latestEvents": latest_events,
+        "pricing": {
+            "aiInputCostPerMillionTokensUsd": AI_INPUT_COST_PER_MTOKEN,
+            "aiOutputCostPerMillionTokensUsd": AI_OUTPUT_COST_PER_MTOKEN,
+            "functionRequestCostPerMillionUsd": FUNCTION_REQUEST_COST_PER_MILLION,
+            "tableWriteCostPer10kUsd": TABLESTORE_WRITE_COST_PER_10K,
+        },
+    }
+
+
+def get_admin_key():
+    header_value = request.headers.get("X-Admin-Key", "").strip()
+    if header_value:
+        return header_value
+
+    query_value = request.args.get("admin_key", "").strip()
+    if query_value:
+        return query_value
+
+    data = request.get_json(silent=True) or {}
+    return str(data.get("admin_key", "")).strip()
+
+
+def ensure_admin_access():
+    if not ADMIN_DASHBOARD_KEY:
+        return json_response(
+            {"error": "ADMIN_DASHBOARD_KEY is not configured on the server"}, 503
+        )
+
+    if get_admin_key() != ADMIN_DASHBOARD_KEY:
+        return json_response({"error": "Admin access denied"}, 403)
+
+    return None
 
 
 def fetch_user_rows(user_id):
@@ -142,6 +333,7 @@ def call_qwen_insight(insight_type, context_rows):
             f"Data: {json.dumps(context_rows, ensure_ascii=False)}"
         )
 
+    started_at = time.time()
     response = requests.post(
         QWEN_BASE_URL,
         headers={
@@ -164,7 +356,9 @@ def call_qwen_insight(insight_type, context_rows):
     response.raise_for_status()
     payload = response.json()
     content = payload["choices"][0]["message"]["content"]
-    return json.loads(content)
+    usage_meta = get_usage_meta(payload)
+    usage_meta["durationMs"] = int((time.time() - started_at) * 1000)
+    return json.loads(content), usage_meta
 
 
 def call_qwen_banner(weather, context_rows, user_name):
@@ -184,6 +378,7 @@ def call_qwen_banner(weather, context_rows, user_name):
         f"Recent data: {json.dumps(context_rows, ensure_ascii=False)}"
     )
 
+    started_at = time.time()
     response = requests.post(
         QWEN_BASE_URL,
         headers={
@@ -206,7 +401,9 @@ def call_qwen_banner(weather, context_rows, user_name):
     response.raise_for_status()
     payload = response.json()
     content = payload["choices"][0]["message"]["content"]
-    return json.loads(content)
+    usage_meta = get_usage_meta(payload)
+    usage_meta["durationMs"] = int((time.time() - started_at) * 1000)
+    return json.loads(content), usage_meta
 
 
 def notify_admin_feedback(category, text, user_id):
@@ -244,7 +441,15 @@ def telegram_webhook():
             if not target_id:
                 return json_response({"error": "User ID is required"}, 400)
 
-            return json_response(fetch_user_rows(target_id))
+            rows = fetch_user_rows(target_id)
+            record_usage_event(
+                "data_fetch",
+                "/",
+                requestKind="user_rows",
+                requestCount=1,
+                status="ok",
+            )
+            return json_response(rows)
 
         except Exception as e:
             return f"Server Error: {str(e)}", 500
@@ -270,6 +475,14 @@ def telegram_webhook():
             ]
 
             client.put_row(TABLE_NAME, Row(pk, cols))
+            record_usage_event(
+                "telegram_webhook",
+                "/",
+                requestKind="telegram_message",
+                requestCount=1,
+                tableWrites=1,
+                status="ok",
+            )
 
             reply_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
             requests.post(
@@ -342,6 +555,15 @@ def save_web_log():
 
         pk = [("uswer_id", user_id), ("timestamp", timestamp)]
         client.put_row(TABLE_NAME, Row(pk, cols))
+        record_usage_event(
+            "log_write",
+            "/api/log",
+            requestKind="save_log",
+            logType=log_type,
+            requestCount=1,
+            tableWrites=1,
+            status="ok",
+        )
 
         if log_type == "feedback":
             notify_admin_feedback(data.get("feedbackCategory", ""), text, user_id)
@@ -383,7 +605,20 @@ def ai_insight():
                 }
             )
 
-        insight = call_qwen_insight(insight_type, context_rows)
+        insight, usage_meta = call_qwen_insight(insight_type, context_rows)
+        record_usage_event(
+            "ai_call",
+            "/api/ai-insight",
+            requestKind=insight_type,
+            model=QWEN_MODEL,
+            requestCount=1,
+            promptTokens=usage_meta["promptTokens"],
+            completionTokens=usage_meta["completionTokens"],
+            totalTokens=usage_meta["totalTokens"],
+            estimatedCostUsd=usage_meta["estimatedCostUsd"],
+            durationMs=usage_meta["durationMs"],
+            status="ok",
+        )
         insight["source"] = "qwen"
         return json_response(insight)
 
@@ -410,10 +645,48 @@ def ai_banner():
 
         rows = fetch_user_rows(user_id)
         context_rows = build_ai_context(rows, "daily")
-        banner = call_qwen_banner(weather, context_rows, user_name)
+        banner, usage_meta = call_qwen_banner(weather, context_rows, user_name)
+        record_usage_event(
+            "ai_call",
+            "/api/ai-banner",
+            requestKind="daily_banner",
+            model=QWEN_MODEL,
+            requestCount=1,
+            promptTokens=usage_meta["promptTokens"],
+            completionTokens=usage_meta["completionTokens"],
+            totalTokens=usage_meta["totalTokens"],
+            estimatedCostUsd=usage_meta["estimatedCostUsd"],
+            durationMs=usage_meta["durationMs"],
+            status="ok",
+        )
         banner["source"] = "qwen"
         return json_response(banner)
 
+    except Exception as e:
+        return json_response({"error": str(e)}, 500)
+
+
+@app.route("/api/admin/usage-summary", methods=["GET", "OPTIONS"])
+def admin_usage_summary():
+    if request.method == "OPTIONS":
+        return add_cors_headers(make_response())
+
+    auth_error = ensure_admin_access()
+    if auth_error:
+        return auth_error
+
+    try:
+        now_ms = int(time.time() * 1000)
+        usage_rows = fetch_usage_rows()
+        summary = summarize_usage_rows(usage_rows, now_ms)
+        summary["generatedAt"] = now_ms
+        summary["model"] = QWEN_MODEL
+        summary["notes"] = [
+            "AI cost is estimated from response token usage.",
+            "Function cost currently includes request-count estimate only.",
+            "TableStore write cost is included only if TABLESTORE_WRITE_COST_PER_10K is configured.",
+        ]
+        return json_response(summary)
     except Exception as e:
         return json_response({"error": str(e)}, 500)
 
