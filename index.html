@@ -18,11 +18,63 @@
         .guide-option { transition: transform 0.15s ease, border-color 0.2s ease, background-color 0.2s ease; }
         .guide-option:active { transform: scale(0.98); }
         .floating-notice { transition: opacity 0.25s ease, transform 0.25s ease; }
+        .desktop-layout { display: block; }
+        .desktop-column { min-width: 0; }
+        .desktop-only { display: none; }
+        .desktop-summary-card { display: none; }
+
+        @media (min-width: 1100px) {
+            body { padding: 24px; }
+            .desktop-layout {
+                display: grid;
+                grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(320px, 0.82fr);
+                gap: 24px;
+                align-items: start;
+            }
+            .desktop-column {
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+            }
+            .desktop-only { display: block; }
+            .desktop-summary-card { display: block; }
+            .mobile-tab-nav { display: none !important; }
+            .desktop-sticky {
+                position: sticky;
+                top: 96px;
+            }
+            .desktop-surface {
+                max-width: 1400px !important;
+                border-radius: 32px;
+                overflow: hidden;
+            }
+            .desktop-header {
+                padding: 20px 24px;
+            }
+            .desktop-main {
+                padding: 24px;
+            }
+            .desktop-chart {
+                min-height: 320px;
+                height: auto;
+            }
+            .desktop-overview-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+            .desktop-weekly-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .desktop-history-list {
+                max-height: 920px;
+                overflow: auto;
+                padding-right: 4px;
+            }
+        }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
 <body class="text-slate-900 pb-10">
-    <div class="max-w-md mx-auto min-h-screen bg-white shadow-2xl relative flex flex-col">
+    <div class="desktop-surface max-w-md mx-auto min-h-screen bg-white shadow-2xl relative flex flex-col">
         <div id="login-container" class="bg-slate-50 p-4 border-b flex justify-center">
             <script async src="https://telegram.org/js/telegram-widget.js?22"
                     data-telegram-login="wellnesslog28_bot"
@@ -35,7 +87,7 @@
         </div>
         <div id="appNotice" class="floating-notice fixed left-1/2 top-4 z-[130] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-2 rounded-2xl px-4 py-3 text-sm font-bold shadow-2xl opacity-0 pointer-events-none"></div>
 
-        <header class="bg-slate-900 p-4 text-white flex justify-between items-center sticky top-0 z-50">
+        <header class="desktop-header bg-slate-900 p-4 text-white flex justify-between items-center sticky top-0 z-50">
             <div>
                 <h1 class="text-lg font-bold flex items-center gap-2">☕ 웰니스 로그 <span class="bg-emerald-500 text-[9px] px-1.5 py-0.5 rounded tracking-tighter text-white">V2.3</span></h1>
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Caffeine Sensitive Daily Tracker</p>
@@ -61,12 +113,14 @@
             </div>
         </div>
 
-        <nav class="flex p-2 gap-2 bg-slate-50 border-b sticky top-[64px] z-40">
+        <nav class="mobile-tab-nav flex p-2 gap-2 bg-slate-50 border-b sticky top-[64px] z-40">
             <button onclick="switchTab('morning')" id="tabMorning" class="flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active">🌅 리포트/목표</button>
             <button onclick="switchTab('caffeine')" id="tabCaffeine" class="flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active">📊 기록/분석</button>
         </nav>
 
-        <main class="p-4 space-y-6 flex-1">
+        <main class="desktop-main p-4 flex-1">
+            <div class="desktop-layout">
+            <div class="desktop-column">
             <section class="bg-slate-900 text-white rounded-[2rem] p-5 shadow-2xl">
                 <div class="flex items-center justify-between gap-3 mb-4">
                     <div>
@@ -90,18 +144,13 @@
                 </div>
             </section>
 
-            <section>
-                <div class="flex items-center justify-between mb-3">
-                    <div>
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.24em]">Overview</p>
-                        <h2 class="text-lg font-black text-slate-900 mt-1">오늘 흐름을 한눈에 보는 대시보드</h2>
-                    </div>
-                    <span class="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">실시간</span>
-                </div>
-                <div id="overviewCards" class="grid grid-cols-2 gap-3"></div>
-            </section>
-
             <div id="morningSection" class="space-y-5">
+                <div class="desktop-summary-card bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-700 text-white rounded-[2rem] p-5 shadow-2xl">
+                    <p class="text-[10px] font-black text-emerald-200 uppercase tracking-[0.24em]">Desktop Focus</p>
+                    <h2 class="text-lg font-black leading-tight mt-2">아침 설정과 오늘 기록을 한 화면에서 같이 봅니다</h2>
+                    <p class="text-xs text-slate-200 leading-relaxed mt-3">왼쪽에서 입력하고, 가운데에서 오늘 흐름을 읽고, 오른쪽에서 최근 히스토리와 피드백을 바로 확인할 수 있게 구성했습니다.</p>
+                </div>
+
                 <div class="bg-slate-900 text-white rounded-3xl p-5 shadow-xl">
                     <p class="text-[10px] font-black text-emerald-300 uppercase tracking-[0.24em] mb-2">Why This Exists</p>
                     <h2 class="text-base font-black leading-tight mb-2">내 몸 반응을 읽기 위한 카페인 로그</h2>
@@ -245,6 +294,19 @@
                     </p>
                 </div>
             </div>
+            </div>
+
+            <div class="desktop-column">
+            <section>
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.24em]">Overview</p>
+                        <h2 class="text-lg font-black text-slate-900 mt-1">오늘 흐름을 한눈에 보는 대시보드</h2>
+                    </div>
+                    <span class="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">실시간</span>
+                </div>
+                <div id="overviewCards" class="desktop-overview-grid grid grid-cols-2 gap-3"></div>
+            </section>
 
             <div id="caffeineSection" class="hidden space-y-6">
                 <div class="bg-white border border-slate-200 rounded-[2rem] p-5 shadow-sm">
@@ -284,44 +346,6 @@
                         <p><strong>식사 패턴이 영향을 준 것 같다면:</strong> 아래 Meal Factor quick log로 공복, 과식, 고탄수, 야식 같은 흐름만 가볍게 남겨도 충분합니다.</p>
                     </div>
                     <p class="text-[11px] text-slate-500 leading-relaxed mt-3">지금 상황에 맞는 흐름 하나만 골라도 충분합니다. 모든 버튼을 다 누를 필요는 없어요.</p>
-                </div>
-
-                <div class="bg-rose-50 border border-rose-100 rounded-3xl p-4 shadow-sm">
-                    <div class="flex items-center justify-between gap-3 mb-3">
-                        <div>
-                            <p class="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">Recovery Factor</p>
-                            <h3 class="text-sm font-black text-slate-900 mt-1">어젯밤 술 영향 quick log</h3>
-                        </div>
-                        <span class="text-[10px] font-black px-2 py-1 rounded-full bg-white text-rose-500 border border-rose-100">NEXT-DAY</span>
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed mb-3">술은 오늘 마신 음료보다, 다음날 회복과 예민함에 남는 영향으로 해석하는 편이 더 정확합니다.</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="saveAlcoholQuickLog('light')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-rose-700 btn-active">어젯밤 1잔</button>
-                        <button onclick="saveAlcoholQuickLog('medium')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-rose-700 btn-active">어젯밤 2-3잔</button>
-                        <button onclick="saveAlcoholQuickLog('high')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-rose-700 btn-active">어젯밤 많이 마심</button>
-                        <button onclick="saveAlcoholQuickLog('none')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-slate-600 btn-active">술 영향 없음</button>
-                    </div>
-                    <p id="alcoholQuickLogStatus" class="text-[11px] text-slate-500 leading-relaxed mt-3">컨디션이 안 좋은데 카페인 때문인지 헷갈릴 때 빠르게 남겨두면 도움이 됩니다.</p>
-                </div>
-
-                <div class="bg-amber-50 border border-amber-100 rounded-3xl p-4 shadow-sm">
-                    <div class="flex items-center justify-between gap-3 mb-3">
-                        <div>
-                            <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">Meal Factor</p>
-                            <h3 class="text-sm font-black text-slate-900 mt-1">식사 영향 요인 quick log</h3>
-                        </div>
-                        <span class="text-[10px] font-black px-2 py-1 rounded-full bg-white text-amber-600 border border-amber-100">LIGHT TAG</span>
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed mb-3">칼로리나 영양소를 다 적지 않아도 됩니다. 오늘 몸 상태 해석에 영향을 준 식사 패턴만 남겨두세요.</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="saveMealFactorQuickLog('fasting')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">공복 오래감</button>
-                        <button onclick="saveMealFactorQuickLog('heavyLunch')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">점심 많이 먹음</button>
-                        <button onclick="saveMealFactorQuickLog('highCarb')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">고탄수 식사</button>
-                        <button onclick="saveMealFactorQuickLog('sugary')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">단 음식 많음</button>
-                        <button onclick="saveMealFactorQuickLog('lateMeal')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">야식</button>
-                        <button onclick="saveMealFactorQuickLog('skippedMeal')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">식사 거름</button>
-                    </div>
-                    <p id="mealFactorStatus" class="text-[11px] text-slate-500 leading-relaxed mt-3">점심 뒤 졸림, 공복 카페인, 야식 다음날 무거움처럼 식사가 컨디션을 흔든 날만 남겨도 충분합니다.</p>
                 </div>
 
                 <div class="space-y-6">
@@ -371,11 +395,11 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm h-52">
+            <div class="desktop-chart bg-white rounded-3xl p-4 border border-slate-100 shadow-sm h-52">
                 <canvas id="myChart"></canvas>
             </div>
 
-            <div id="weeklyOverviewCards" class="grid grid-cols-3 gap-3"></div>
+            <div id="weeklyOverviewCards" class="desktop-weekly-grid grid grid-cols-3 gap-3"></div>
 
             <div class="bg-slate-50 border border-slate-200 rounded-3xl p-5 shadow-sm">
                 <div class="flex items-center justify-between gap-3 mb-2">
@@ -387,8 +411,49 @@
                 </div>
                 <p id="weeklyInsightBody" class="text-xs text-slate-600 leading-relaxed">기록이 쌓이면, 반복되는 패턴을 한 줄 요약으로 보여드립니다.</p>
             </div>
+            </div>
 
-            <div id="historyList" class="space-y-3 pb-10"></div>
+            <div class="desktop-column">
+            <div class="desktop-sticky space-y-6">
+            <div class="bg-rose-50 border border-rose-100 rounded-3xl p-4 shadow-sm">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                        <p class="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">Recovery Factor</p>
+                        <h3 class="text-sm font-black text-slate-900 mt-1">어젯밤 술 영향 quick log</h3>
+                    </div>
+                    <span class="text-[10px] font-black px-2 py-1 rounded-full bg-white text-rose-500 border border-rose-100">NEXT-DAY</span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed mb-3">술은 오늘 마신 음료보다, 다음날 회복과 예민함에 남는 영향으로 해석하는 편이 더 정확합니다.</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="saveAlcoholQuickLog('light')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-rose-700 btn-active">어젯밤 1잔</button>
+                    <button onclick="saveAlcoholQuickLog('medium')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-rose-700 btn-active">어젯밤 2-3잔</button>
+                    <button onclick="saveAlcoholQuickLog('high')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-rose-700 btn-active">어젯밤 많이 마심</button>
+                    <button onclick="saveAlcoholQuickLog('none')" class="bg-white border border-rose-100 rounded-2xl py-3 text-xs font-black text-slate-600 btn-active">술 영향 없음</button>
+                </div>
+                <p id="alcoholQuickLogStatus" class="text-[11px] text-slate-500 leading-relaxed mt-3">컨디션이 안 좋은데 카페인 때문인지 헷갈릴 때 빠르게 남겨두면 도움이 됩니다.</p>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-100 rounded-3xl p-4 shadow-sm">
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                        <p class="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em]">Meal Factor</p>
+                        <h3 class="text-sm font-black text-slate-900 mt-1">식사 영향 요인 quick log</h3>
+                    </div>
+                    <span class="text-[10px] font-black px-2 py-1 rounded-full bg-white text-amber-600 border border-amber-100">LIGHT TAG</span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed mb-3">칼로리나 영양소를 다 적지 않아도 됩니다. 오늘 몸 상태 해석에 영향을 준 식사 패턴만 남겨두세요.</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="saveMealFactorQuickLog('fasting')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">공복 오래감</button>
+                    <button onclick="saveMealFactorQuickLog('heavyLunch')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">점심 많이 먹음</button>
+                    <button onclick="saveMealFactorQuickLog('highCarb')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">고탄수 식사</button>
+                    <button onclick="saveMealFactorQuickLog('sugary')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">단 음식 많음</button>
+                    <button onclick="saveMealFactorQuickLog('lateMeal')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">야식</button>
+                    <button onclick="saveMealFactorQuickLog('skippedMeal')" class="bg-white border border-amber-100 rounded-2xl py-3 text-xs font-black text-amber-700 btn-active">식사 거름</button>
+                </div>
+                <p id="mealFactorStatus" class="text-[11px] text-slate-500 leading-relaxed mt-3">점심 뒤 졸림, 공복 카페인, 야식 다음날 무거움처럼 식사가 컨디션을 흔든 날만 남겨도 충분합니다.</p>
+            </div>
+
+            <div id="historyList" class="desktop-history-list space-y-3 pb-10"></div>
 
             <div class="mt-10 mb-6 p-6 bg-slate-50 rounded-[2.5rem] border border-slate-200 text-center shadow-inner">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Feedback</p>
@@ -437,6 +502,9 @@
                     <div id="adminUsageNotes" class="mt-3 text-[10px] text-slate-500 leading-relaxed"></div>
                 </div>
             </section>
+            </div>
+            </div>
+            </div>
         </main>
     </div>
 
@@ -458,8 +526,10 @@
     <script>
         const ALIBABA_URL = "https://wellnesot-brain-unwrkhiccv.ap-northeast-2.fcapp.run";
         const ADMIN_USAGE_KEY_STORAGE = "wellness_admin_usage_key";
+        const DESKTOP_LAYOUT_QUERY = "(min-width: 1100px)";
         let allData = JSON.parse(localStorage.getItem("wellnessData")) || {};
         let chartInstance = null;
+        let currentTab = "morning";
         const MORNING_GUIDE_STEPS = [
             {
                 key: "quickSleepQuality",
@@ -589,6 +659,42 @@
 
         function isAdminMode() {
             return new URLSearchParams(window.location.search).get("admin") === "1";
+        }
+
+        function isDesktopLayout() {
+            return window.matchMedia(DESKTOP_LAYOUT_QUERY).matches;
+        }
+
+        function applyTabVisibility() {
+            const morning = document.getElementById("morningSection");
+            const caffeine = document.getElementById("caffeineSection");
+            const tabMorning = document.getElementById("tabMorning");
+            const tabCaffeine = document.getElementById("tabCaffeine");
+
+            if (!morning || !caffeine || !tabMorning || !tabCaffeine) return;
+
+            if (isDesktopLayout()) {
+                morning.classList.remove("hidden");
+                caffeine.classList.remove("hidden");
+            } else {
+                const isMorning = currentTab === "morning";
+                morning.classList.toggle("hidden", !isMorning);
+                caffeine.classList.toggle("hidden", isMorning);
+            }
+
+            const morningClass = currentTab === "morning"
+                ? "flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active"
+                : "flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active";
+            const caffeineClass = currentTab === "caffeine"
+                ? "flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active"
+                : "flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active";
+
+            tabMorning.className = morningClass;
+            tabCaffeine.className = caffeineClass;
+        }
+
+        function syncResponsiveLayout() {
+            applyTabVisibility();
         }
 
         function getAdminUsageKey() {
@@ -1474,6 +1580,8 @@
         window.onload = async function () {
             const today = new Date().toISOString().split("T")[0];
             document.getElementById("targetDate").value = today;
+            syncResponsiveLayout();
+            window.addEventListener("resize", syncResponsiveLayout);
             updateTimeInput();
             updateRealtimeWeather();
 
@@ -1588,12 +1696,9 @@
         }
 
         function switchTab(tab) {
-            const isMorning = tab === "morning";
-            document.getElementById("morningSection").classList.toggle("hidden", !isMorning);
-            document.getElementById("caffeineSection").classList.toggle("hidden", isMorning);
-            document.getElementById("tabMorning").className = isMorning ? "flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active" : "flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active";
-            document.getElementById("tabCaffeine").className = !isMorning ? "flex-1 py-3 rounded-xl text-sm font-bold transition tab-active btn-active" : "flex-1 py-3 rounded-xl text-sm font-bold transition bg-slate-200 text-slate-500 btn-active";
-            if (!isMorning) updateProgressBars();
+            currentTab = tab;
+            applyTabVisibility();
+            if (tab === "caffeine" || isDesktopLayout()) updateProgressBars();
         }
 
         async function updateRealtimeWeather() {
