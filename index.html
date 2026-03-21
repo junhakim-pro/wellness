@@ -394,7 +394,7 @@
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Feedback</p>
                 <h4 class="text-sm font-bold text-slate-800 mb-3 leading-tight">이 서비스가 진짜 도움이 되는지,<br>짧은 의견을 남겨주세요.</h4>
                 <p class="text-xs text-slate-500 leading-relaxed mb-4">
-                    불편했던 점, 좋았던 점, 보고 싶은 기능을 한 줄로 남겨주시면 다음 업데이트에 반영하기 좋습니다. 로그인 후 남기면 운영자 텔레그램으로도 바로 전달됩니다.
+                    불편했던 점, 좋았던 점, 보고 싶은 기능을 한 줄로 남겨주시면 다음 업데이트에 반영하기 좋습니다. 로그인 전에는 이 기기에 임시 저장되고, 로그인하면 운영자에게 자동 전달됩니다.
                 </p>
                 <div class="grid grid-cols-3 gap-2 mb-3">
                     <button onclick="setFeedbackCategory('good', this)" class="feedback-btn bg-white border border-slate-200 py-2 rounded-xl text-[11px] font-bold selected-item">좋았어요</button>
@@ -554,6 +554,51 @@
 
         function getBannerCacheKey(dateStr, userId) {
             return `aiBanner:${userId}:${dateStr}`;
+        }
+
+        function getPendingFeedbackQueue() {
+            try {
+                const raw = localStorage.getItem("wellness_pending_feedback");
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                console.error("대기 중 피드백 파싱 실패:", e);
+                return [];
+            }
+        }
+
+        function setPendingFeedbackQueue(items) {
+            localStorage.setItem("wellness_pending_feedback", JSON.stringify(items));
+        }
+
+        function queuePendingFeedback(item) {
+            const queue = getPendingFeedbackQueue();
+            queue.push(item);
+            setPendingFeedbackQueue(queue.slice(-20));
+            return queue.length;
+        }
+
+        async function flushPendingFeedbackQueue() {
+            if (!isLoggedIn()) return { sent: 0, failed: 0 };
+
+            const queue = getPendingFeedbackQueue();
+            if (!queue.length) return { sent: 0, failed: 0 };
+
+            const remaining = [];
+            let sent = 0;
+
+            for (const item of queue) {
+                try {
+                    await syncLogToCloud(item);
+                    sent += 1;
+                } catch (e) {
+                    console.error("대기 피드백 전송 실패:", e);
+                    remaining.push(item);
+                }
+            }
+
+            setPendingFeedbackQueue(remaining);
+            return { sent, failed: remaining.length };
         }
 
         function getGreetingByHour(payload, hour) {
@@ -1297,6 +1342,13 @@
                 showAppNotice(welcomeNotice, "success");
                 sessionStorage.removeItem("wellness_welcome_notice");
             }
+
+            if (savedId) {
+                const pendingFeedbackResult = await flushPendingFeedbackQueue();
+                if (pendingFeedbackResult.sent > 0) {
+                    showAppNotice(`로그인 전 남긴 피드백 ${pendingFeedbackResult.sent}건을 운영자에게 전달했어요.`, "success");
+                }
+            }
         };
 
         async function loadCloudData(userId) {
@@ -1595,6 +1647,13 @@
         async function saveFeedback() {
             const text = document.getElementById("feedbackText").value.trim();
             const category = document.getElementById("feedbackCategory").value;
+            const payload = {
+                type: "feedback",
+                timestamp: Date.now(),
+                text: text,
+                note: text,
+                feedbackCategory: category
+            };
 
             if (!text) {
                 showAppNotice("한 줄 의견을 적어주세요.", "warn");
@@ -1602,16 +1661,19 @@
             }
 
             try {
-                const syncResult = await syncLogToCloud({
-                    type: "feedback",
-                    timestamp: Date.now(),
-                    text: text,
-                    note: text,
-                    feedbackCategory: category
-                });
+                if (!isLoggedIn()) {
+                    queuePendingFeedback(payload);
+                    document.getElementById("feedbackText").value = "";
+                    if (!showLoginBenefitPrompt()) {
+                        showAppNotice("피드백을 이 기기에 임시 저장했어요. 로그인하면 운영자에게 자동 전달됩니다.", "info");
+                    }
+                    return;
+                }
+
+                const syncResult = await syncLogToCloud(payload);
                 if (syncResult.skipped) {
                     if (!showLoginBenefitPrompt()) {
-                        showAppNotice("로그인 후 피드백을 남기면 운영자 텔레그램으로 바로 전달돼요.", "warn");
+                        showAppNotice("피드백을 이 기기에 임시 저장했어요. 로그인하면 운영자에게 자동 전달됩니다.", "info");
                     }
                     return;
                 }
